@@ -1,0 +1,21 @@
+{
+  "faqs": [
+    {
+      "q": "What is eSecurityIn?",
+      "a": "eSecurityIn is a cybersecurity and IT training institute that trains students in practical security skills."
+    },
+    {
+      "q": "What courses do you offer?",
+      "a": "We currently offer the Cyber Security Course, a 45-day practical program. More course details can be shared by our reception team."
+    },
+    {
+      "q": "How long is the Cyber Security Course?",
+      "a": "The Cyber Security Course is 45 days long."
+    },
+    {
+      "q": "Do you conduct seminars?",
+      "a": "Yes, eSecurityIn conducts cybersecurity seminars for students."
+    }
+  ],
+  "_unavailable_topics_response": "I don't have that information right now. Let me connect you with our reception team."
+}

@@ -1,0 +1,10 @@
+{
+  "_note": "Add only verified seminar information. Do not invent dates or speaker names.",
+  "about": "eSecurityIn conducts cybersecurity seminars for students to introduce them to the field, career paths, and the importance of security awareness.",
+  "topics_commonly_covered": [
+    "Introduction to cyber security",
+    "Common online threats and how to stay safe",
+    "Career opportunities in cyber security"
+  ],
+  "_TODO": "Add upcoming seminar schedule, venue and registration details when available."
+}

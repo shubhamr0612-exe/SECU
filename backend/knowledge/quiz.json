@@ -1,0 +1,55 @@
+{
+  "title": "Cybersecurity Challenge",
+  "questions": [
+    {
+      "id": 1,
+      "question": "You receive an email saying your account will be deleted unless you click a link immediately. What should you do first?",
+      "options": [
+        "Click the link quickly to save the account",
+        "Do not click; verify by contacting the service directly",
+        "Reply with your password to confirm identity",
+        "Forward it to all your friends"
+      ],
+      "answer": 1
+    },
+    {
+      "id": 2,
+      "question": "Which of these is the strongest password?",
+      "options": ["password123", "Rahul2020", "G7!v@q9#Lm2z", "123456789"],
+      "answer": 2
+    },
+    {
+      "id": 3,
+      "question": "What does 'phishing' refer to?",
+      "options": [
+        "A type of firewall",
+        "Tricking people into revealing sensitive info via fake messages",
+        "A secure encryption method",
+        "A password manager"
+      ],
+      "answer": 1
+    },
+    {
+      "id": 4,
+      "question": "What extra security does Two-Factor Authentication (2FA) add?",
+      "options": [
+        "A second, separate verification step besides your password",
+        "A faster login",
+        "A stronger Wi-Fi signal",
+        "Automatic password sharing"
+      ],
+      "answer": 0
+    },
+    {
+      "id": 5,
+      "question": "You find a USB drive in the parking lot. What is the safe action?",
+      "options": [
+        "Plug it into your work laptop to find the owner",
+        "Do not plug it in; hand it to IT/security",
+        "Plug it into a public PC",
+        "Keep it for personal use"
+      ],
+      "answer": 1
+    }
+  ]
+}

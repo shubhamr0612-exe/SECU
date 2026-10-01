@@ -1,0 +1,131 @@
+{
+  "project_name": "SECU - eSecurityIn AI Receptionist & Interactive AI Buddy",
+  "app_type": "hybrid_fullstack (Reception Touchscreen Kiosk App + Admin Analytics Dashboard)",
+  "context": "eSecurityIn Cybersecurity & IT Training Institute Reception Screen",
+  "theme": "Dark Modern Futuristic AI Kiosk (Clean Tactical Tech, Cyan/Emerald/Obsidian Theme)",
+  "design_archetype": "THE PERFORMANCE PRO / TACTICAL MINIMALISM (Obsidian #0B0F17 base, Electric Cyan #00F0FF, Emerald Green #10B981, Cyber Blue #3B82F6)",
+  "typography": {
+    "font_family_heading": "Chivo, Outfit, Space Grotesk, sans-serif",
+    "font_family_body": "Inter, DM Sans, sans-serif",
+    "font_family_mono": "JetBrains Mono, Fira Code, monospace",
+    "font_sizes": {
+      "hero_title": "text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight",
+      "section_title": "text-2xl md:text-3xl font-bold tracking-tight",
+      "card_header": "text-lg md:text-xl font-semibold",
+      "body_text": "text-base leading-relaxed",
+      "caption": "text-xs md:text-sm text-slate-400 font-medium tracking-wide uppercase"
+    }
+  },
+  "colors": {
+    "background_dark": "#0B0F17",
+    "background_card": "#131B2A",
+    "background_card_hover": "#1A2438",
+    "glass_background": "rgba(19, 27, 42, 0.75)",
+    "glass_border": "rgba(0, 240, 255, 0.15)",
+    "primary_cyan": "#00F0FF",
+    "primary_emerald": "#10B981",
+    "accent_amber": "#F59E0B",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "border_subtle": "#1E293B",
+    "state_colors": {
+      "IDLE": {
+        "color": "#00F0FF",
+        "glow": "rgba(0, 240, 255, 0.3)",
+        "label": "Ready to chat",
+        "description": "Gentle breathing glow around robot core"
+      },
+      "LISTENING": {
+        "color": "#3B82F6",
+        "glow": "rgba(59, 130, 246, 0.5)",
+        "label": "Listening to you...",
+        "description": "Active audio visualizer waveform expansion"
+      },
+      "THINKING": {
+        "color": "#F59E0B",
+        "glow": "rgba(245, 158, 11, 0.4)",
+        "label": "Analyzing security query...",
+        "description": "Orbiting tech rings with subtle particle drift"
+      },
+      "SPEAKING": {
+        "color": "#10B981",
+        "glow": "rgba(16, 185, 129, 0.5)",
+        "label": "SECU is speaking",
+        "description": "Rhythmic soundwave ripples matching speech output"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "avatar_container": "Hexagonal/circular sci-fi frame with 1px cyan stroke, inner ambient glow, animated canvas/SVG core with 4 distinct facial/state expressions",
+    "waveform_visualizer": "Dynamic multi-bar audio equalizer reacting to microphone input or speech synthesis",
+    "touchscreen_optimizations": "Minimum 48px touch targets, high contrast, generous padding, touch feedback animations",
+    "card_style": "Dark obsidian panel with subtle border hover effect, backdrop blur, 12px rounded radius, soft drop shadow"
+  },
+  "image_urls": {
+    "cyber_ai_core": {
+      "url": "https://images.unsplash.com/photo-1674027444485-cec3da58eef4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxjeWJlcnNlY3VyaXR5JTIwdGVjaG5vbG9neSUyMGZ1dHVyaXN0aWMlMjBhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc5MDgzMzE4OHww&ixlib=rb-4.1.0&q=85",
+      "description": "Futuristic digital AI core particle sphere for background ambient hero visuals",
+      "usage": "Kiosk background ambient layer / AI avatar frame background"
+    },
+    "cyber_brain": {
+      "url": "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwyfHxjeWJlcnNlY3VyaXR5JTIwdGVjaG5vbG9neSUyMGZ1dHVyaXN0aWMlMjBhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc5MDgzMzE4OHww&ixlib=rb-4.1.0&q=85",
+      "description": "Circuit board neural brain visual",
+      "usage": "Cybersecurity course highlight modal / quiz header banner"
+    },
+    "students_lab": {
+      "url": "https://images.unsplash.com/photo-1629904853893-c2c8981a1dc5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwyfHxjeWJlcnNlY3VyaXR5JTIwc3R1ZGVudCUyMGxlYXJuaW5nJTIwdGVjaCUyMGNvZGV8ZW58MHx8fHwxNzkwODMzMTk1fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Students collaborating in a high-tech cybersecurity lab",
+      "usage": "Institute about section / Course detail modal showcase"
+    },
+    "coder_dark": {
+      "url": "https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxjeWJlcnNlY3VyaXR5JTIwc3R1ZGVudCUyMGxlYXJuaW5nJTIwdGVjaCUyMGNvZGV8ZW58MHx8fHwxNzkwODMzMTk1fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Ethical hacker analyzing threat monitors",
+      "usage": "Ethical Hacking course card thumbnail"
+    }
+  },
+  "key_features_layout": {
+    "reception_page": {
+      "header": "Institute Brand Header (eSecurityIn Logo + Live Date/Time Kiosk Watch + Hinglish/English Toggle + Admin Login Icon)",
+      "left_panel": "SECU Interactive AI Avatar (Visual State Identifier, Glowing Sci-Fi Avatar Frame, Animated Waveform, Voice Mic Button, Speaking/Listening indicators)",
+      "right_panel": "Live Conversation Transcript Drawer (Chat Bubbles with Voice Output Controls, Suggested Quick Queries, Hinglish Voice Assistant Response)",
+      "bottom_bar": "Quick Action Dock (Explore Courses, Take Cyber Quiz, Book Demo / Request Call, Contact Reception)"
+    },
+    "interactive_quiz_modal": "Cybersecurity Aptitude & Knowledge Quiz (5 Engaging Questions, Score Calculation, Course Recommendation Based on Score, Instant Lead Capture)",
+    "course_catalog_modal": "Categorized Courses (CEH Ethical Hacking, SOC Analyst, Network Security, Cloud Security) with Fee, Duration, Prerequisites, and 'Ask SECU about this' button",
+    "lead_form_drawer": "Instant Callback Form (Name, Phone, Email, Interest Area, Preferred Batch) with instant toast feedback",
+    "admin_dashboard": {
+      "sidebar": "Navigation (Overview Analytics, Conversation Logs, Leads Table, Course Demand, Settings)",
+      "kpi_cards": "[Today's Conversations, Total Leads Captured, Top Interested Course, Avg Conversation Duration]",
+      "charts": "Course Interest Breakdown (Recharts Pie/Bar), Hourly Kiosk Footfall Activity",
+      "table": "Recent Reception Leads Table with Search, Filter by Course, Export to CSV, Status Update (New / Contacted / Enrolled)"
+    }
+  },
+  "testing_and_data_testid_rules": {
+    "mandatory_data_testid_attributes": [
+      "kiosk-mic-button",
+      "avatar-status-badge",
+      "quick-action-courses-button",
+      "quick-action-quiz-button",
+      "quick-action-lead-button",
+      "language-toggle-button",
+      "conversation-transcript-container",
+      "quiz-option-button",
+      "quiz-submit-button",
+      "lead-form-submit-button",
+      "admin-login-email-input",
+      "admin-login-password-input",
+      "admin-login-submit-button",
+      "admin-lead-status-select",
+      "admin-export-csv-button"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Ensure the voice assistant SECU speaks and supports both English and Hinglish mode.",
+    "Include simulated Web Speech API / TTS / Speech-to-Text hooks with graceful fallbacks so the user can speak via browser microphone or type in the input bar on the touchscreen.",
+    "Ensure SECU avatar smoothly transitions between IDLE, LISTENING, THINKING, and SPEAKING states with clear visual badge and wave colors.",
+    "Implement data persistence (localStorage / mock backend) for leads captured so they instantly appear in the Admin Dashboard table.",
+    "All interactive elements MUST include data-testid attributes for automated test validation.",
+    "Use lucide-react icons and recharts for admin dashboard analytics.",
+    "Keep touchscreen kiosk UX ultra-responsive with large buttons (min 48px height) and touch-friendly drawers/modals."
+  ]
+}

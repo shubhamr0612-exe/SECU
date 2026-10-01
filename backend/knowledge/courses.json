@@ -1,0 +1,14 @@
+{
+  "_note": "Only VERIFIED course information is listed here. Do NOT invent fees, placement stats, certifications or dates. Add new verified courses to the 'courses' array using the same structure.",
+  "courses": [
+    {
+      "id": "cyber-security-course",
+      "name": "Cyber Security Course",
+      "duration": "45 days",
+      "category": "Cyber Security",
+      "summary": "A 45-day practical cyber security program.",
+      "_TODO_fields": ["fee", "prerequisites", "syllabus", "certification", "batch_timings"]
+    }
+  ],
+  "interest_categories": ["Cyber Security", "Cloud Security", "AI Security", "Ethical Hacking", "Other"]
+}
