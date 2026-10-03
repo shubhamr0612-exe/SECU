@@ -7,8 +7,9 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
-import { Users, TrendingUp, MessageSquare, Award, LogOut, Download, Shield, Loader2 } from "lucide-react";
+import { Users, TrendingUp, MessageSquare, Award, LogOut, Download, Shield, Loader2, BarChart3, BookMarked } from "lucide-react";
 import { toast } from "sonner";
+import { KnowledgeEditor } from "../components/KnowledgeEditor";
 
 const COLORS = ["#00F0FF", "#10B981", "#3B82F6", "#F59E0B", "#A855F7"];
 
@@ -29,6 +30,7 @@ export default function Admin() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [tab, setTab] = useState("overview");
 
   useEffect(() => {
     if (ready && !user) nav("/login");
@@ -81,6 +83,18 @@ export default function Admin() {
       </header>
 
       <main className="max-w-7xl mx-auto p-5 space-y-6">
+        <div className="flex gap-2">
+          <Button variant={tab === "overview" ? "default" : "outline"} size="sm" onClick={() => setTab("overview")} data-testid="admin-tab-overview">
+            <BarChart3 size={16} className="mr-1" /> Overview
+          </Button>
+          <Button variant={tab === "knowledge" ? "default" : "outline"} size="sm" onClick={() => setTab("knowledge")} data-testid="admin-tab-knowledge">
+            <BookMarked size={16} className="mr-1" /> Knowledge Base
+          </Button>
+        </div>
+
+        {tab === "knowledge" && <KnowledgeEditor />}
+
+        {tab === "overview" && (<>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={MessageSquare} label="Conversations Today" value={data.today_conversations} color="#00F0FF" />
           <StatCard icon={TrendingUp} label="Total Conversations" value={data.total_conversations} color="#3B82F6" />
@@ -159,6 +173,7 @@ export default function Admin() {
             </Table>
           </div>
         </div>
+        </>)}
       </main>
     </div>
   );

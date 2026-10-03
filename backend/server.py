@@ -8,6 +8,8 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import sys
 import json
+import base64
+import uuid
 import logging
 import re
 from datetime import datetime, timezone, timedelta
@@ -16,7 +18,7 @@ from typing import List, Optional, Annotated
 import bcrypt
 import jwt
 from bson import ObjectId
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, BeforeValidator, EmailStr
@@ -27,6 +29,8 @@ from app.agent import guardrails
 from app.services import knowledge
 from app.services import llm
 from app.services import vision
+from app.services import tts as tts_service
+from app.services import storage
 
 # ---------------------------------------------------------------------------
 # Config / infra
@@ -46,6 +50,24 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "SecuAdmin@2026")
 
 STATES = ["IDLE", "WELCOME", "VISITOR_DISCOVERY", "CASUAL_CONVERSATION",
           "SEMINAR_DISCUSSION", "COURSE_DISCUSSION", "QUIZ", "LEAD_CAPTURE", "GOODBYE"]
+
+# In-memory KB cache (source of truth is the Mongo `knowledge` doc).
+KB_CACHE: dict = {}
+
+
+async def load_kb():
+    global KB_CACHE
+    doc = await db.knowledge.find_one({"_id": "kb"})
+    if not doc:
+        seed = knowledge.seed()
+        await db.knowledge.insert_one({"_id": "kb", **seed,
+                                       "updated_at": now_iso()})
+        KB_CACHE = seed
+    else:
+        doc.pop("_id", None)
+        doc.pop("updated_at", None)
+        KB_CACHE = doc
+    return KB_CACHE
 
 app = FastAPI(title="SECU API")
 api = APIRouter(prefix="/api")
@@ -195,7 +217,7 @@ async def chat(req: ChatRequest):
     new_state = infer_state(user_text, session.get("state", "WELCOME"))
 
     # Retrieve knowledge + build augmented system prompt
-    kb = knowledge.as_context_string(user_text)
+    kb = knowledge.as_context_string(user_text, KB_CACHE)
     system = SYSTEM_PROMPT + "\n\nAPPROVED KNOWLEDGE BASE (only use facts from here):\n" + kb
 
     # Guardrail: prompt injection -> safe handling (still let LLM reply, prompt is robust)
@@ -390,6 +412,129 @@ async def me(admin: dict = Depends(get_current_admin)):
     return admin
 
 
+# ---------------------------------------------------------------------------
+# Routes: knowledge base (admin editor + public course list)
+# ---------------------------------------------------------------------------
+@api.get("/knowledge")
+async def get_knowledge(admin: dict = Depends(get_current_admin)):
+    return KB_CACHE
+
+
+class KnowledgeUpdate(BaseModel):
+    institute: Optional[dict] = None
+    courses: Optional[dict] = None
+    seminars: Optional[dict] = None
+    faq: Optional[dict] = None
+    contact: Optional[dict] = None
+
+
+@api.put("/knowledge")
+async def update_knowledge(body: KnowledgeUpdate, admin: dict = Depends(get_current_admin)):
+    update = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    update["updated_at"] = now_iso()
+    await db.knowledge.update_one({"_id": "kb"}, {"$set": update}, upsert=True)
+    await load_kb()
+    return {"ok": True, "knowledge": KB_CACHE}
+
+
+@api.get("/knowledge/public")
+async def public_knowledge():
+    """Public subset used by the reception UI (courses + contact)."""
+    return {"courses": KB_CACHE.get("courses", {}), "contact": KB_CACHE.get("contact", {})}
+
+
+# ---------------------------------------------------------------------------
+# Routes: voice TTS (server-side OpenAI voice)
+# ---------------------------------------------------------------------------
+class SpeakRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "nova"
+    speed: Optional[float] = 1.05
+
+
+@api.get("/voice/voices")
+async def list_voices():
+    return {"voices": tts_service.VOICES, "default": tts_service.DEFAULT_VOICE}
+
+
+@api.post("/voice/synthesize")
+async def voice_synthesize(req: SpeakRequest):
+    text = (req.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="No text provided")
+    try:
+        audio = await tts_service.synthesize(text, req.voice or "nova", req.speed or 1.05)
+    except Exception as e:
+        logger.error("TTS error: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="TTS temporarily unavailable")
+    return Response(content=audio, media_type="audio/mpeg")
+
+
+# ---------------------------------------------------------------------------
+# Routes: vision gesture detection
+# ---------------------------------------------------------------------------
+@api.post("/vision/gesture")
+async def vision_gesture(req: VisionRequest):
+    data = (req.image_base64 or "").strip()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image provided")
+    if data[:5] == "data:" and "," in data[:60]:
+        data = data.split(",", 1)[1]
+    try:
+        result = await vision.detect_gesture(data)
+    except Exception as e:
+        logger.error("Gesture error: %s", type(e).__name__)
+        return {"ok": True, "gesture": "none", "comment": ""}
+    result["comment"] = guardrails.sanitize_output(result.get("comment", "")) or ""
+    return {"ok": True, **result}
+
+
+# ---------------------------------------------------------------------------
+# Routes: selfie upload + serve (for QR sharing)
+# ---------------------------------------------------------------------------
+class SelfieUpload(BaseModel):
+    image_base64: str
+
+
+@api.post("/selfie/upload")
+async def selfie_upload(body: SelfieUpload):
+    data = (body.image_base64 or "").strip()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image provided")
+    if data[:5] == "data:" and "," in data[:60]:
+        data = data.split(",", 1)[1]
+    try:
+        raw = base64.b64decode(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+    selfie_id = str(uuid.uuid4())
+    path = f"{storage.APP_NAME}/selfies/{selfie_id}.png"
+    try:
+        result = storage.put_object(path, raw, "image/png")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not save selfie right now")
+    await db.selfies.insert_one({
+        "_id": selfie_id, "storage_path": result.get("path", path),
+        "created_at": now_iso()})
+    base = os.environ.get("PUBLIC_BASE_URL") or ""
+    url = f"{base.rstrip('/')}/api/selfie/{selfie_id}" if base else f"/api/selfie/{selfie_id}"
+    return {"ok": True, "id": selfie_id, "url": url, "path": f"/api/selfie/{selfie_id}"}
+
+
+@api.get("/selfie/{selfie_id}")
+async def selfie_get(selfie_id: str):
+    rec = await db.selfies.find_one({"_id": selfie_id})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Selfie not found")
+    try:
+        content, ctype = storage.get_object(rec["storage_path"])
+    except Exception:
+        raise HTTPException(status_code=404, detail="Selfie not found")
+    return Response(content=content, media_type=ctype or "image/png")
+
+
 app.include_router(api)
 
 app.add_middleware(
@@ -406,6 +551,12 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.leads.create_index("created_at")
     await db.messages.create_index("session_id")
+    await load_kb()
+    try:
+        storage.init_storage()
+        logger.info("Object storage initialized.")
+    except Exception as e:
+        logger.error("Storage init failed: %s", type(e).__name__)
     existing = await db.users.find_one({"email": ADMIN_EMAIL.lower()})
     if not existing:
         await db.users.insert_one({

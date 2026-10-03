@@ -8,6 +8,7 @@ on the client; frames are processed transiently and never stored.
 """
 import os
 import uuid
+import json
 import logging
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
@@ -51,3 +52,52 @@ async def observe(image_base64: str) -> str:
         UserMessage(text="Look at this camera frame and respond following your rules.",
                     file_contents=[img]))
     return (reply or "").strip()
+
+
+GESTURE_SYSTEM = """You are SECU, eSecurityIn's friendly AI buddy watching a live webcam frame.
+Detect if the visitor is clearly making ONE of these hand gestures:
+- "wave" (open hand raised, waving hello)
+- "thumbs_up" (thumb up)
+- "peace" (V / victory / peace sign)
+- "heart" (hand heart)
+- "none" (no clear gesture)
+
+Respond with STRICT JSON only, no markdown, exactly:
+{"gesture": "<wave|thumbs_up|peace|heart|none>", "comment": "<short fun reaction in English or light Hinglish, max 14 words, one emoji; empty string if gesture is none>"}
+
+RULES:
+- Only report a gesture if it is clearly visible. If unsure, use "none".
+- NEVER comment on age, gender, ethnicity, body, health or emotion.
+- React ONLY to the gesture itself.
+Examples:
+{"gesture":"wave","comment":"Hey hey! 👋 Great to see you!"}
+{"gesture":"thumbs_up","comment":"Thumbs up! 😎 You're awesome!"}
+{"gesture":"none","comment":""}
+"""
+
+
+async def detect_gesture(image_base64: str) -> dict:
+    if not _API_KEY:
+        raise RuntimeError("LLM_API_KEY_MISSING")
+    chat = LlmChat(
+        api_key=_API_KEY,
+        session_id=f"secu-gesture-{uuid.uuid4()}",
+        system_message=GESTURE_SYSTEM,
+    ).with_model(_PROVIDER, _MODEL)
+    img = ImageContent(image_base64=image_base64)
+    reply = await chat.send_message(
+        UserMessage(text="Detect the gesture and return the JSON.", file_contents=[img]))
+    raw = (reply or "").strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return {"gesture": "none", "comment": ""}
+    gesture = str(data.get("gesture", "none")).lower()
+    if gesture not in ("wave", "thumbs_up", "peace", "heart"):
+        gesture = "none"
+    comment = str(data.get("comment", "")).strip()
+    return {"gesture": gesture, "comment": comment if gesture != "none" else ""}

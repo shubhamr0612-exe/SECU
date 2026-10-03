@@ -12,6 +12,7 @@ import { QuizModal } from "../components/QuizModal";
 import { CoursesModal } from "../components/CoursesModal";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import {
   Mic, MicOff, Send, BookOpen, Trophy, PhoneCall, RotateCcw, Lock,
   Volume2, VolumeX, Camera, CameraOff, Eye, Sparkles, AlertTriangle,
@@ -19,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 const WELCOME = "Hey! Welcome to eSecurityIn! I'm SECU. How's your day going?";
+const VOICES = ["nova", "shimmer", "alloy", "echo", "fable", "onyx", "coral", "ash", "sage"];
 
 export default function Reception() {
   const [messages, setMessages] = useState([]);
@@ -33,16 +35,29 @@ export default function Reception() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [showCourses, setShowCourses] = useState(false);
   const [showSelfie, setShowSelfie] = useState(false);
+  const [voiceName, setVoiceName] = useState("nova");
 
   const scrollRef = useRef(null);
   const mutedRef = useRef(muted); mutedRef.current = muted;
+  const voiceNameRef = useRef(voiceName); voiceNameRef.current = voiceName;
   const captureRef = useRef(null);
   const busyRef = useRef(false);
 
+  // Server-side TTS: returns an audio Blob, or null to fall back to browser voice.
+  const ttsFetcher = useCallback(async (text) => {
+    if (mutedRef.current) return null;
+    try {
+      const r = await api.synthesize(text, voiceNameRef.current, 1.05);
+      return r.data;
+    } catch (_) {
+      return null;
+    }
+  }, []);
+
   const speakOut = useCallback(async (text) => {
     if (mutedRef.current) return;
-    await voice.speak(text, lang);
-  }, [lang]); // eslint-disable-line
+    await voice.speak(text);
+  }, []); // eslint-disable-line
 
   const handleUserText = useCallback(async (text) => {
     if (!text?.trim() || busyRef.current) return;
@@ -67,7 +82,7 @@ export default function Reception() {
     }
   }, [sessionId, lang, speakOut]);
 
-  const voice = useVoice({ lang, onUtterance: handleUserText });
+  const voice = useVoice({ lang, onUtterance: handleUserText, ttsFetcher });
 
   // Camera reaction (consented): SECU reacts to a single live frame.
   const reactToCamera = useCallback(async () => {
@@ -90,14 +105,28 @@ export default function Reception() {
     }
   }, [speakOut]);
 
-  // Periodic friendly camera reactions while camera is on.
+  // Periodic friendly camera reactions + gesture detection while camera is on.
   useEffect(() => {
     if (!cameraOn) return;
     const first = setTimeout(reactToCamera, 2800);
-    const interval = setInterval(() => {
+    const sceneInterval = setInterval(() => {
       if (!voice.speaking && !thinking) reactToCamera();
-    }, 32000);
-    return () => { clearTimeout(first); clearInterval(interval); };
+    }, 34000);
+    const gestureInterval = setInterval(async () => {
+      if (busyRef.current || voice.speaking || thinking) return;
+      const img = captureRef.current && captureRef.current();
+      if (!img) return;
+      try {
+        const r = await api.gesture(img);
+        if (r.data.gesture && r.data.gesture !== "none" && r.data.comment && !busyRef.current && !voice.speaking) {
+          busyRef.current = true;
+          setMessages((m) => [...m, { role: "assistant", message: r.data.comment }]);
+          await speakOut(r.data.comment);
+          busyRef.current = false;
+        }
+      } catch (_) {}
+    }, 7000);
+    return () => { clearTimeout(first); clearInterval(sceneInterval); clearInterval(gestureInterval); };
   }, [cameraOn]); // eslint-disable-line
 
   useEffect(() => {
@@ -163,6 +192,12 @@ export default function Reception() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={voiceName} onValueChange={setVoiceName}>
+            <SelectTrigger className="w-24 h-9" data-testid="voice-picker"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {VOICES.map((v) => <SelectItem key={v} value={v} className="capitalize">{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" data-testid="language-toggle-button"
                   onClick={() => setLang((l) => (l === "en-IN" ? "hi-IN" : "en-IN"))}>
             {lang === "en-IN" ? "EN" : "HI"}

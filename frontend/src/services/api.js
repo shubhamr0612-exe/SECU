@@ -23,6 +23,14 @@ export const api = {
     client.post("/quiz/answer", { question_id, answer_index }),
   analytics: () => client.get("/analytics"),
   observe: (image_base64) => client.post("/vision/observe", { image_base64 }),
+  gesture: (image_base64) => client.post("/vision/gesture", { image_base64 }),
+  getKnowledge: () => client.get("/knowledge"),
+  saveKnowledge: (payload) => client.put("/knowledge", payload),
+  getPublicKnowledge: () => client.get("/knowledge/public"),
+  getVoices: () => client.get("/voice/voices"),
+  synthesize: (text, voice, speed) =>
+    client.post("/voice/synthesize", { text, voice, speed }, { responseType: "blob" }),
+  uploadSelfie: (image_base64) => client.post("/selfie/upload", { image_base64 }),
   login: (email, password) => client.post("/auth/login", { email, password }),
   me: () => client.get("/auth/me"),
 };

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Hands-free continuous voice: auto-listens, pauses the mic while SECU speaks,
-// then resumes. Emits an utterance after a short silence. Browser Web Speech API.
-export function useVoice({ onUtterance, lang = "en-IN" } = {}) {
+// Hands-free continuous voice. STT via browser Web Speech API. TTS tries a
+// server-side voice (ttsFetcher -> audio Blob); falls back to browser speech.
+// The mic auto-pauses while SECU speaks and resumes afterwards.
+export function useVoice({ onUtterance, lang = "en-IN", ttsFetcher } = {}) {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [supported, setSupported] = useState(true);
@@ -14,10 +15,10 @@ export function useVoice({ onUtterance, lang = "en-IN" } = {}) {
   const speakingRef = useRef(false);
   const finalRef = useRef("");
   const silenceRef = useRef(null);
-  const onUttRef = useRef(onUtterance);
-  onUttRef.current = onUtterance;
-  const langRef = useRef(lang);
-  langRef.current = lang;
+  const audioRef = useRef(null);
+  const onUttRef = useRef(onUtterance); onUttRef.current = onUtterance;
+  const ttsRef = useRef(ttsFetcher); ttsRef.current = ttsFetcher;
+  const langRef = useRef(lang); langRef.current = lang;
 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -29,7 +30,7 @@ export function useVoice({ onUtterance, lang = "en-IN" } = {}) {
 
     rec.onstart = () => setListening(true);
     rec.onresult = (e) => {
-      if (speakingRef.current) return; // ignore SECU's own voice
+      if (speakingRef.current) return;
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
         if (r.isFinal) finalRef.current += " " + r[0].transcript;
@@ -51,14 +52,31 @@ export function useVoice({ onUtterance, lang = "en-IN" } = {}) {
     rec.onend = () => {
       setListening(false);
       if (autoRef.current && !speakingRef.current) {
-        try { rec.start(); } catch (_) {
-          setTimeout(() => { try { rec.start(); } catch (e) {} }, 350);
-        }
+        try { rec.start(); } catch (_) { setTimeout(() => { try { rec.start(); } catch (x) {} }, 350); }
       }
     };
     recRef.current = rec;
     return () => { autoRef.current = false; try { rec.stop(); } catch (_) {} };
   }, [lang]);
+
+  const resumeMic = () => {
+    if (autoRef.current) {
+      try { recRef.current.start(); } catch (_) { setTimeout(() => { try { recRef.current.start(); } catch (x) {} }, 350); }
+    }
+  };
+
+  const browserSpeak = (text) => new Promise((resolve) => {
+    if (!window.speechSynthesis) return resolve();
+    window.speechSynthesis.cancel();
+    const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, "");
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = langRef.current; u.rate = 1.04; u.pitch = 1.05;
+    const voices = window.speechSynthesis.getVoices();
+    const pref = voices.find((v) => v.lang === langRef.current) || voices.find((v) => v.lang && v.lang.startsWith("en"));
+    if (pref) u.voice = pref;
+    u.onend = resolve; u.onerror = resolve;
+    window.speechSynthesis.speak(u);
+  });
 
   const startAuto = useCallback(() => {
     setError(null);
@@ -73,36 +91,38 @@ export function useVoice({ onUtterance, lang = "en-IN" } = {}) {
     setListening(false);
   }, []);
 
-  const speak = useCallback((text) => {
-    return new Promise((resolve) => {
-      if (!window.speechSynthesis || !text) return resolve();
-      speakingRef.current = true; setSpeaking(true);
-      try { recRef.current && recRef.current.stop(); } catch (_) {}
-      window.speechSynthesis.cancel();
-      const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, "");
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = langRef.current; u.rate = 1.04; u.pitch = 1.05;
-      const voices = window.speechSynthesis.getVoices();
-      const pref = voices.find((v) => v.lang === langRef.current) ||
-        voices.find((v) => v.lang && v.lang.startsWith("en"));
-      if (pref) u.voice = pref;
-      const done = () => {
-        speakingRef.current = false; setSpeaking(false);
-        finalRef.current = "";
-        if (autoRef.current) {
-          try { recRef.current.start(); } catch (_) {
-            setTimeout(() => { try { recRef.current.start(); } catch (e) {} }, 350);
-          }
+  const speak = useCallback(async (text) => {
+    if (!text) return;
+    speakingRef.current = true; setSpeaking(true);
+    try { recRef.current && recRef.current.stop(); } catch (_) {}
+
+    let played = false;
+    if (ttsRef.current) {
+      try {
+        const blob = await ttsRef.current(text);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          await new Promise((resolve) => {
+            const a = new Audio(url); audioRef.current = a;
+            a.onended = () => { URL.revokeObjectURL(url); resolve(); };
+            a.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+            a.play().catch(() => resolve());
+          });
+          played = true;
         }
-        resolve();
-      };
-      u.onend = done; u.onerror = done;
-      window.speechSynthesis.speak(u);
-    });
+      } catch (_) {}
+    }
+    if (!played) await browserSpeak(text);
+
+    audioRef.current = null;
+    speakingRef.current = false; setSpeaking(false);
+    finalRef.current = "";
+    resumeMic();
   }, []);
 
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis && window.speechSynthesis.cancel();
+    if (audioRef.current) { try { audioRef.current.pause(); } catch (_) {} audioRef.current = null; }
     speakingRef.current = false; setSpeaking(false);
   }, []);
 

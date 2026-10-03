@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
+import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Download, RefreshCw, Camera } from "lucide-react";
+import { Download, RefreshCw, Camera, QrCode, Loader2 } from "lucide-react";
 
 function brand(dataUrl) {
   return new Promise((resolve) => {
@@ -33,13 +35,15 @@ function brand(dataUrl) {
 export function SelfieModal({ open, onOpenChange, capture }) {
   const [count, setCount] = useState(null);
   const [photo, setPhoto] = useState(null);
+  const [shareUrl, setShareUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const startedRef = useRef(false);
 
-  const runCountdown = () => { setPhoto(null); setCount(3); };
+  const runCountdown = () => { setPhoto(null); setShareUrl(null); setCount(3); };
 
   useEffect(() => {
     if (open && !startedRef.current) { startedRef.current = true; runCountdown(); }
-    if (!open) { startedRef.current = false; setPhoto(null); setCount(null); }
+    if (!open) { startedRef.current = false; setPhoto(null); setShareUrl(null); setCount(null); }
   }, [open]);
 
   useEffect(() => {
@@ -57,9 +61,16 @@ export function SelfieModal({ open, onOpenChange, capture }) {
   const download = () => {
     if (!photo) return;
     const a = document.createElement("a");
-    a.href = photo;
-    a.download = `secu-selfie-${Date.now()}.png`;
-    a.click();
+    a.href = photo; a.download = `secu-selfie-${Date.now()}.png`; a.click();
+  };
+
+  const share = async () => {
+    if (!photo) return;
+    setUploading(true);
+    try {
+      const r = await api.uploadSelfie(photo);
+      setShareUrl(r.data.url);
+    } catch (_) {} finally { setUploading(false); }
   };
 
   return (
@@ -78,15 +89,35 @@ export function SelfieModal({ open, onOpenChange, capture }) {
           </div>
         )}
 
-        {photo && (
+        {photo && !shareUrl && (
           <div className="space-y-4 animate-rise" data-testid="selfie-result">
             <img src={photo} alt="Selfie with SECU" className="w-full rounded-lg" />
-            <div className="flex gap-2">
-              <Button onClick={download} className="flex-1 h-11" data-testid="selfie-download-button">
-                <Download size={18} className="mr-2" /> Download
+            <div className="grid grid-cols-3 gap-2">
+              <Button onClick={download} className="h-11" data-testid="selfie-download-button">
+                <Download size={18} className="mr-1" /> Save
+              </Button>
+              <Button variant="secondary" onClick={share} disabled={uploading} className="h-11" data-testid="selfie-share-button">
+                {uploading ? <Loader2 className="animate-spin" size={18} /> : <><QrCode size={18} className="mr-1" /> QR</>}
               </Button>
               <Button variant="outline" onClick={runCountdown} className="h-11" data-testid="selfie-retake-button">
-                <RefreshCw size={18} className="mr-2" /> Retake
+                <RefreshCw size={18} className="mr-1" /> Retake
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {shareUrl && (
+          <div className="text-center space-y-3 animate-rise" data-testid="selfie-qr">
+            <div className="bg-white p-4 rounded-xl inline-block">
+              <QRCodeCanvas value={shareUrl} size={200} includeMargin />
+            </div>
+            <p className="text-sm text-muted-foreground">📱 Scan with your phone to open & save your selfie</p>
+            <div className="flex gap-2">
+              <Button onClick={download} variant="secondary" className="flex-1 h-11">
+                <Download size={18} className="mr-1" /> Also save here
+              </Button>
+              <Button variant="outline" onClick={runCountdown} className="h-11">
+                <RefreshCw size={18} className="mr-1" /> Retake
               </Button>
             </div>
           </div>
