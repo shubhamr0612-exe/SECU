@@ -22,6 +22,7 @@ export const api = {
   answerQuiz: (question_id, answer_index) =>
     client.post("/quiz/answer", { question_id, answer_index }),
   analytics: () => client.get("/analytics"),
+  observe: (image_base64) => client.post("/vision/observe", { image_base64 }),
   login: (email, password) => client.post("/auth/login", { email, password }),
   me: () => client.get("/auth/me"),
 };

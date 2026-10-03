@@ -1,0 +1,29 @@
+{
+  "summary": "SECU AI Reception app verified end-to-end. All backend endpoints (health, chat w/ guardrails, leads, auth, quiz, analytics, patch) and the key frontend flows (chat text input, quick-action modals, lead form, admin login, admin dashboard, unauth redirect) are working.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "GET /api/health -> status ok, db true, llm_configured true",
+    "POST /api/chat 'Hi' -> friendly reply + session_id; same session_id continues conversation",
+    "POST /api/chat Hinglish course query -> correctly answered '45 days' in Hinglish",
+    "POST /api/chat discount/jobs -> declines/redirects without inventing info",
+    "Prompt injection -> system prompt and keys NOT leaked",
+    "POST /api/leads valid -> stored with source=AI Reception status=New",
+    "POST /api/leads invalid phone -> 400",
+    "GET /api/leads & /api/analytics without token -> 401; with admin token -> 200",
+    "POST /api/auth/login admin creds -> JWT token; wrong password -> 401",
+    "GET /api/quiz -> 5 questions returned without answer keys",
+    "POST /api/quiz/answer -> correct boolean + correct_index",
+    "PATCH /api/leads/{id} -> admin can update status; 401 without token",
+    "Reception UI: text-input + send-text-button -> user bubble + SECU reply rendered",
+    "Quick action buttons open Courses and Lead modals; Lead form submit shows success toast",
+    "reset-session-button works without errors",
+    "Login redirects to /admin; dashboard shows 4 stat-cards, course interest chart, leads table, CSV button",
+    "Unauthenticated /admin redirects to /login"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Voice (Web Speech API) not tested in headless; text fallback validated instead per instructions. Quiz endpoint uses integer question_id (schema correctly typed)."
+}

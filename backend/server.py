@@ -26,6 +26,7 @@ from app.agent.prompts import SYSTEM_PROMPT
 from app.agent import guardrails
 from app.services import knowledge
 from app.services import llm
+from app.services import vision
 
 # ---------------------------------------------------------------------------
 # Config / infra
@@ -227,6 +228,30 @@ async def voice_transcribe():
     # the server-side abstraction point for a future STT provider (see app/services/stt.py).
     return {"ok": True, "mode": "browser-web-speech-api",
             "note": "STT is handled client-side in V1. Server STT provider can be plugged here."}
+
+
+class VisionRequest(BaseModel):
+    image_base64: str
+
+
+@api.post("/vision/observe")
+async def vision_observe(req: VisionRequest):
+    """Consented camera interaction: SECU reacts to a single live frame.
+    Frames are processed transiently and never stored."""
+    data = (req.image_base64 or "").strip()
+    if not data:
+        raise HTTPException(status_code=400, detail="No image provided")
+    if "," in data[:60] and data[:5] == "data:":
+        data = data.split(",", 1)[1]
+    try:
+        comment = await vision.observe(data)
+    except Exception as e:
+        logger.error("Vision error: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Vision temporarily unavailable")
+    comment = guardrails.sanitize_output(comment) or ""
+    if comment.strip().upper().startswith("NONE") or not comment.strip():
+        return {"ok": True, "comment": None}
+    return {"ok": True, "comment": comment.strip()}
 
 
 @api.post("/voice/speak")
