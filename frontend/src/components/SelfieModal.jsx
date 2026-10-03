@@ -72,7 +72,7 @@ export function SelfieModal({ open, onOpenChange, capture }) {
     try {
       const r = await api.uploadSelfie(photo, onWall);
       setShareUrl(r.data.url);
-    } catch (_) {} finally { setUploading(false); }
+    } catch (e) { console.error("selfie upload failed", e); } finally { setUploading(false); }
   };
 
   return (

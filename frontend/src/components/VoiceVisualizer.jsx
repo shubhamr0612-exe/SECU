@@ -1,13 +1,13 @@
 export const VoiceVisualizer = ({ active = false, color = "#00F0FF" }) => {
-  const bars = Array.from({ length: 28 });
+  const bars = Array.from({ length: 28 }, (_, i) => `bar-${i}`);
   return (
     <div className="flex items-end justify-center gap-[3px] h-12" data-testid="voice-visualizer">
-      {bars.map((_, i) => {
+      {bars.map((barId, i) => {
         const delay = (i % 7) * 0.08;
         const base = 6 + ((i * 37) % 26);
         return (
           <span
-            key={i}
+            key={barId}
             style={{
               width: 3,
               height: active ? `${base + 10}px` : "5px",

@@ -113,7 +113,7 @@ export default function Admin() {
                 <YAxis type="category" dataKey="name" stroke="#94a3b8" width={110} />
                 <Tooltip contentStyle={{ background: "#131B2A", border: "1px solid #1E293B", borderRadius: 8 }} />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                  {data.interest.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  {data.interest.map((entry, i) => <Cell key={entry.name || i} fill={COLORS[i % COLORS.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

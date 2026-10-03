@@ -23,6 +23,9 @@ import { toast } from "sonner";
 const WELCOME = "Hey! Welcome to eSecurityIn! I'm SECU. How's your day going?";
 const VOICES = ["nova", "shimmer", "alloy", "echo", "fable", "onyx", "coral", "ash", "sage"];
 
+let _msgId = 0;
+const newMsg = (role, message) => ({ id: `m${_msgId++}`, role, message });
+
 export default function Reception() {
   const [messages, setMessages] = useState([]);
   const [sessionId, setSessionId] = useState(null);
@@ -64,20 +67,21 @@ export default function Reception() {
   const handleUserText = useCallback(async (text) => {
     if (!text?.trim() || busyRef.current) return;
     busyRef.current = true;
-    setMessages((m) => [...m, { role: "user", message: text }]);
+    setMessages((m) => [...m, newMsg("user", text)]);
     setThinking(true);
     try {
       const r = await api.chat(text, sessionId, lang);
       setSessionId(r.data.session_id);
-      setMessages((m) => [...m, { role: "assistant", message: r.data.reply }]);
+      setMessages((m) => [...m, newMsg("assistant", r.data.reply)]);
       setThinking(false);
       await speakOut(r.data.reply);
       if (r.data.state === "LEAD_CAPTURE") setTimeout(() => setShowLead(true), 500);
       if (r.data.state === "QUIZ") setTimeout(() => setShowQuiz(true), 500);
     } catch (e) {
+      console.error("chat failed", e);
       setThinking(false);
       const msg = "Oops! Something went wrong. Please try again. 😅";
-      setMessages((m) => [...m, { role: "assistant", message: msg }]);
+      setMessages((m) => [...m, newMsg("assistant", msg)]);
       toast.error("Connection issue. Please try again.");
     } finally {
       busyRef.current = false;
@@ -97,10 +101,11 @@ export default function Reception() {
       const r = await api.observe(img);
       setThinking(false);
       if (r.data.comment) {
-        setMessages((m) => [...m, { role: "assistant", message: r.data.comment }]);
+        setMessages((m) => [...m, newMsg("assistant", r.data.comment)]);
         await speakOut(r.data.comment);
       }
     } catch (e) {
+      console.error("camera observe failed", e);
       setThinking(false);
     } finally {
       busyRef.current = false;
@@ -122,11 +127,11 @@ export default function Reception() {
         const r = await api.gesture(img);
         if (r.data.gesture && r.data.gesture !== "none" && r.data.comment && !busyRef.current && !voice.speaking) {
           busyRef.current = true;
-          setMessages((m) => [...m, { role: "assistant", message: r.data.comment }]);
+          setMessages((m) => [...m, newMsg("assistant", r.data.comment)]);
           await speakOut(r.data.comment);
           busyRef.current = false;
         }
-      } catch (_) {}
+      } catch (e) { console.error("gesture detect failed", e); }
     }, 7000);
     return () => { clearTimeout(first); clearInterval(sceneInterval); clearInterval(gestureInterval); };
   }, [cameraOn]); // eslint-disable-line
@@ -147,7 +152,7 @@ export default function Reception() {
 
   const begin = async () => {
     setStarted(true);
-    setMessages([{ role: "assistant", message: WELCOME }]);
+    setMessages([newMsg("assistant", WELCOME)]);
     if (voice.supported) voice.startAuto();
     await speakOut(WELCOME);
   };
@@ -292,8 +297,8 @@ export default function Reception() {
                 Tap START TALKING and just speak — SECU listens hands-free.
               </p>
             )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} animate-rise`}>
+            {messages.map((m) => (
+              <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} animate-rise`}>
                 <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
                   ${m.role === "user" ? "bg-[#00F0FF] text-[#06121a] rounded-br-sm font-medium" : "bg-secondary rounded-bl-sm"}`}>
                   {m.message}
