@@ -7,6 +7,7 @@ attractiveness or emotion, and must never identify the person. Camera is opt-in
 on the client; frames are processed transiently and never stored.
 """
 import os
+import uuid
 import logging
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
@@ -42,7 +43,7 @@ async def observe(image_base64: str) -> str:
         raise RuntimeError("LLM_API_KEY_MISSING")
     chat = LlmChat(
         api_key=_API_KEY,
-        session_id="secu-vision",
+        session_id=f"secu-vision-{uuid.uuid4()}",
         system_message=VISION_SYSTEM,
     ).with_model(_PROVIDER, _MODEL)
     img = ImageContent(image_base64=image_base64)
