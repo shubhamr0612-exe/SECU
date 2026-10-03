@@ -7,8 +7,10 @@ import { Textarea } from "./ui/textarea";
 import { Plus, Trash2, Save, Loader2, BookOpen, Building2, Calendar, Phone, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 
-const emptyCourse = () => ({ name: "", duration: "", fee: "", category: "", batch: "", summary: "", prerequisites: "" });
-const emptyFaq = () => ({ q: "", a: "" });
+let _uidCounter = 0;
+const uid = () => `kb_${Date.now()}_${_uidCounter++}`;
+const emptyCourse = () => ({ _uid: uid(), name: "", duration: "", fee: "", category: "", batch: "", summary: "", prerequisites: "" });
+const emptyFaq = () => ({ _uid: uid(), q: "", a: "" });
 
 export function KnowledgeEditor() {
   const [kb, setKb] = useState(null);
@@ -47,7 +49,7 @@ export function KnowledgeEditor() {
         institute: { ...(kb?.institute || {}), ...institute },
         courses: {
           ...(kb?.courses || {}),
-          courses: courses.filter((c) => c.name.trim()),
+          courses: courses.filter((c) => c.name.trim()).map(({ _uid, ...c }) => c),
           interest_categories: (kb?.courses?.interest_categories) ||
             ["Cyber Security", "Cloud Security", "AI Security", "Ethical Hacking", "Other"],
         },
@@ -57,7 +59,7 @@ export function KnowledgeEditor() {
           topics_commonly_covered: seminarTopics.split(",").map((t) => t.trim()).filter(Boolean),
         },
         contact: { ...(kb?.contact || {}), ...contact },
-        faq: { ...(kb?.faq || {}), faqs: faqs.filter((f) => f.q.trim() && f.a.trim()) },
+        faq: { ...(kb?.faq || {}), faqs: faqs.filter((f) => f.q.trim() && f.a.trim()).map(({ _uid, ...f }) => f) },
       };
       const r = await api.saveKnowledge(payload);
       setKb(r.data.knowledge);
@@ -98,7 +100,7 @@ export function KnowledgeEditor() {
           <Button variant="outline" size="sm" onClick={() => setCourses([...courses, emptyCourse()])} data-testid="kb-add-course-button"><Plus size={16} className="mr-1" /> Add course</Button>
         </div>
         {courses.map((c, i) => (
-          <div key={i} className="rounded-lg border border-border p-3 space-y-2" data-testid="kb-course-row">
+          <div key={c._uid} className="rounded-lg border border-border p-3 space-y-2" data-testid="kb-course-row">
             <div className="grid sm:grid-cols-2 gap-2">
               <Input placeholder="Course name" value={c.name} onChange={(e) => setCourse(i, "name", e.target.value)} data-testid="kb-course-name" />
               <Input placeholder="Duration (e.g. 45 days)" value={c.duration} onChange={(e) => setCourse(i, "duration", e.target.value)} />
@@ -138,7 +140,7 @@ export function KnowledgeEditor() {
           <Button variant="outline" size="sm" onClick={() => setFaqs([...faqs, emptyFaq()])}><Plus size={16} className="mr-1" /> Add FAQ</Button>
         </div>
         {faqs.map((f, i) => (
-          <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+          <div key={f._uid} className="rounded-lg border border-border p-3 space-y-2">
             <Input placeholder="Question" value={f.q} onChange={(e) => setFaq(i, "q", e.target.value)} />
             <Textarea placeholder="Answer" value={f.a} onChange={(e) => setFaq(i, "a", e.target.value)} />
             <Button variant="ghost" size="sm" className="text-red-400" onClick={() => setFaqs(faqs.filter((_, idx) => idx !== i))}><Trash2 size={16} className="mr-1" /> Remove</Button>

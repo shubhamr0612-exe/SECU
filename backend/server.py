@@ -464,6 +464,7 @@ async def voice_synthesize(req: SpeakRequest):
     text = (req.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="No text provided")
+    audio = b""
     try:
         audio = await tts_service.synthesize(text, req.voice or "nova", req.speed or 1.05)
     except Exception as e:
@@ -512,6 +513,7 @@ async def selfie_upload(body: SelfieUpload):
         raise HTTPException(status_code=400, detail="Invalid image data")
     selfie_id = str(uuid.uuid4())
     path = f"{storage.APP_NAME}/selfies/{selfie_id}.png"
+    result = {}
     try:
         result = storage.put_object(path, raw, "image/png")
     except Exception:
@@ -542,6 +544,7 @@ async def selfie_get(selfie_id: str):
     rec = await db.selfies.find_one({"_id": selfie_id})
     if not rec:
         raise HTTPException(status_code=404, detail="Selfie not found")
+    content, ctype = b"", "image/png"
     try:
         content, ctype = storage.get_object(rec["storage_path"])
     except Exception:

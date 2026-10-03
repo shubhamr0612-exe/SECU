@@ -9,8 +9,8 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cyber-reception-desk
 API = f"{BASE_URL}/api"
 FIX_DIR = pathlib.Path(__file__).parent / "fixtures"
 
-ADMIN_EMAIL = "admin@esecurityin.com"
-ADMIN_PASSWORD = "SecuAdmin@2026"
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@esecurityin.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "SecuAdmin@2026")
 
 FORBIDDEN_WORDS = [
     "age", "young", "old", "boy", "girl", "man", "woman", "male", "female",

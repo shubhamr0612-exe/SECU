@@ -66,7 +66,7 @@ export const QuizModal = ({ open, onOpenChange, onComplete }) => {
                 const isWrong = result && isSel && !result.correct;
                 return (
                   <button
-                    key={i}
+                    key={`${q.id}-${i}`}
                     data-testid="quiz-option-button"
                     onClick={() => choose(i)}
                     disabled={!!result}

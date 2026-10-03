@@ -42,7 +42,7 @@ export const CoursesModal = ({ open, onOpenChange, onAsk }) => {
               </p>
             )}
             {courses.map((c, i) => (
-              <div key={i} className="rounded-xl border border-border p-4 hover:border-[#00F0FF] transition-colors">
+              <div key={c.id || c.name || i} className="rounded-xl border border-border p-4 hover:border-[#00F0FF] transition-colors">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h3 className="font-heading text-lg font-semibold">{c.name}</h3>
                   <div className="flex items-center gap-2">
