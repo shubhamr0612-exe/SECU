@@ -74,6 +74,7 @@ export function useVoice({ onUtterance, lang = "en-IN", ttsFetcher } = {}) {
     const voices = window.speechSynthesis.getVoices();
     const pref = voices.find((v) => v.lang === langRef.current) || voices.find((v) => v.lang && v.lang.startsWith("en"));
     if (pref) u.voice = pref;
+    u.onstart = () => setSpeaking(true);
     u.onend = resolve; u.onerror = resolve;
     window.speechSynthesis.speak(u);
   });
@@ -93,7 +94,10 @@ export function useVoice({ onUtterance, lang = "en-IN", ttsFetcher } = {}) {
 
   const speak = useCallback(async (text) => {
     if (!text) return;
-    speakingRef.current = true; setSpeaking(true);
+    // Gate the mic immediately, but DON'T flip the visual "speaking" state yet —
+    // it must only turn on when audio actually starts, else the avatar's mouth
+    // moves before any sound (server TTS has fetch latency).
+    speakingRef.current = true;
     try { recRef.current && recRef.current.stop(); } catch (_) {}
 
     let played = false;
@@ -104,13 +108,14 @@ export function useVoice({ onUtterance, lang = "en-IN", ttsFetcher } = {}) {
           const url = URL.createObjectURL(blob);
           await new Promise((resolve) => {
             const a = new Audio(url); audioRef.current = a;
+            a.onplay = () => setSpeaking(true); // mouth moves only once sound starts
             a.onended = () => { URL.revokeObjectURL(url); resolve(); };
             a.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-            a.play().catch(() => resolve());
+            a.play().catch((e) => { console.error("tts playback failed", e); resolve(); });
           });
           played = true;
         }
-      } catch (_) {}
+      } catch (e) { console.error("tts fetch failed", e); }
     }
     if (!played) await browserSpeak(text);
 
