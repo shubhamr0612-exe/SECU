@@ -31,6 +31,12 @@ AI voice conversation, Hinglish, knowledge base (institute/courses/seminars/faq/
 - Branded selfie capture with 3-2-1 countdown + download.
 - Hands-free continuous voice (auto-listen, mic auto-pauses while SECU speaks, resumes after). Tested 100%.
 
+### V3 (2026-10-03)
+- Admin **Knowledge Base editor** (`/admin` → Knowledge Base tab): edit institute, courses (name/duration/fee/category/summary/prereq), seminars, contact, FAQ. KB now lives in Mongo (`knowledge` doc, seeded from JSON), cached in `KB_CACHE`; SECU answers from it live. Endpoints: GET/PUT `/api/knowledge` (admin), GET `/api/knowledge/public`.
+- **Selfie QR sharing**: branded selfie uploaded to Emergent Object Storage; QR (`qrcode.react`) links to public `/api/selfie/{id}`. Endpoints: POST `/api/selfie/upload`, GET `/api/selfie/{id}`.
+- **Server-side TTS voice picker**: OpenAI TTS via Emergent key (`tts-1`, 9 voices, default nova), browser TTS fallback. Endpoints: GET `/api/voice/voices`, POST `/api/voice/synthesize`.
+- **Gesture recognition** via Gemini vision (wave/thumbs_up/peace/heart) — SECU reacts while camera on. Endpoint: POST `/api/vision/gesture`. Tested 100% (25/25 backend).
+
 ## Security / Privacy
 JWT + bcrypt, token-gated admin APIs, output sanitisation, CORS via env, no keys in frontend, user-friendly errors. Camera strictly opt-in; vision prompt enforces neutral-only commentary; `app/services/camera.py` remains a disabled isolated interface for future auto-features.
 

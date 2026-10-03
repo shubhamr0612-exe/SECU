@@ -175,3 +175,129 @@ def test_quiz_endpoints(session):
     body = r2.json()
     assert "correct" in body and "correct_index" in body
     assert isinstance(body["correct"], bool)
+
+
+# -------- V3: Knowledge Base --------
+def test_knowledge_requires_admin(session):
+    r = session.get(f"{API}/knowledge", timeout=15)
+    assert r.status_code == 401
+
+
+def test_knowledge_public_has_courses(session):
+    r = session.get(f"{API}/knowledge/public", timeout=15)
+    assert r.status_code == 200
+    data = r.json()
+    assert "courses" in data and "contact" in data
+
+
+def test_knowledge_update_reflects_in_public_and_chat(session, admin_token):
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    # fetch current kb
+    r = session.get(f"{API}/knowledge", headers=hdr, timeout=15)
+    assert r.status_code == 200
+    kb = r.json()
+    courses_block = kb.get("courses", {}) or {}
+    courses_list = list(courses_block.get("courses") or [])
+    # ensure at least one course, inject TEST_SECU_V3 course with distinct fee
+    marker_name = "TEST_SECU_V3_Course"
+    unique_fee = "₹77,777"
+    new_course = {"name": marker_name, "duration": "45 days",
+                  "fee": unique_fee, "category": "Cyber Security",
+                  "summary": "Test V3 course", "prerequisites": "None"}
+    courses_list = [c for c in courses_list if c.get("name") != marker_name]
+    courses_list.append(new_course)
+    payload = {"courses": {**courses_block, "courses": courses_list}}
+    r2 = session.put(f"{API}/knowledge", headers=hdr, json=payload, timeout=20)
+    assert r2.status_code == 200, r2.text
+    # public reflects
+    r3 = session.get(f"{API}/knowledge/public", timeout=15)
+    assert r3.status_code == 200
+    pub_names = [c.get("name") for c in r3.json()["courses"].get("courses", [])]
+    assert marker_name in pub_names
+    # chat answer uses new data
+    r4 = session.post(f"{API}/chat",
+                      json={"message": f"What is the fee of {marker_name}?"},
+                      timeout=60)
+    assert r4.status_code == 200
+    reply = r4.json()["reply"]
+    assert "77,777" in reply or "77777" in reply.replace(",", "")
+    # cleanup — remove marker course
+    courses_list_clean = [c for c in courses_list if c.get("name") != marker_name]
+    session.put(f"{API}/knowledge", headers=hdr,
+                json={"courses": {**courses_block, "courses": courses_list_clean}}, timeout=20)
+
+
+def test_knowledge_update_empty_body_400(session, admin_token):
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    r = session.put(f"{API}/knowledge", headers=hdr, json={}, timeout=15)
+    assert r.status_code == 400
+
+
+# -------- V3: Voice TTS --------
+def test_voices_list(session):
+    r = session.get(f"{API}/voice/voices", timeout=15)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["default"] == "nova"
+    assert isinstance(data["voices"], list)
+    assert len(data["voices"]) == 9
+    assert "nova" in [v.get("id") if isinstance(v, dict) else v for v in data["voices"]]
+
+
+def test_voice_synthesize_mp3(session):
+    r = session.post(f"{API}/voice/synthesize",
+                     json={"text": "Hello from SECU test.", "voice": "nova"}, timeout=60)
+    assert r.status_code == 200, r.text
+    assert r.headers.get("content-type", "").startswith("audio/mpeg")
+    assert len(r.content) > 1000  # non-trivial mp3
+
+
+def test_voice_synthesize_empty_400(session):
+    r = session.post(f"{API}/voice/synthesize", json={"text": ""}, timeout=15)
+    assert r.status_code == 400
+
+
+# -------- V3: Selfie upload + fetch --------
+def test_selfie_upload_and_fetch(session):
+    b64 = (FIX_DIR / "person_b64.txt").read_text().strip()
+    r = session.post(f"{API}/selfie/upload", json={"image_base64": b64}, timeout=30)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["ok"] is True
+    assert "id" in data and data["id"]
+    assert "url" in data and data["url"]
+    sid = data["id"]
+    # fetch bytes
+    url = data["url"] if data["url"].startswith("http") else f"{BASE_URL}{data['url']}"
+    r2 = session.get(url, timeout=20)
+    assert r2.status_code == 200
+    assert r2.headers.get("content-type", "").startswith("image/")
+    assert len(r2.content) > 100
+
+
+def test_selfie_empty_400(session):
+    r = session.post(f"{API}/selfie/upload", json={"image_base64": ""}, timeout=15)
+    assert r.status_code == 400
+
+
+def test_selfie_unknown_404(session):
+    r = session.get(f"{API}/selfie/does-not-exist-xyz", timeout=15)
+    assert r.status_code == 404
+
+
+# -------- V3: Gesture --------
+def test_gesture_empty_400(session):
+    r = session.post(f"{API}/vision/gesture", json={"image_base64": ""}, timeout=15)
+    assert r.status_code == 400
+
+
+def test_gesture_real_image(session):
+    b64 = (FIX_DIR / "person_b64.txt").read_text().strip()
+    r = session.post(f"{API}/vision/gesture", json={"image_base64": b64}, timeout=60)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert data["gesture"] in ("wave", "thumbs_up", "peace", "heart", "none")
+    comment = (data.get("comment") or "").lower()
+    if comment:
+        _check_safe(comment)
