@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Download, RefreshCw, Camera, QrCode, Loader2 } from "lucide-react";
+import { Checkbox } from "./ui/checkbox";
 
 function brand(dataUrl) {
   return new Promise((resolve) => {
@@ -37,6 +38,7 @@ export function SelfieModal({ open, onOpenChange, capture }) {
   const [photo, setPhoto] = useState(null);
   const [shareUrl, setShareUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [onWall, setOnWall] = useState(true);
   const startedRef = useRef(false);
 
   const runCountdown = () => { setPhoto(null); setShareUrl(null); setCount(3); };
@@ -68,7 +70,7 @@ export function SelfieModal({ open, onOpenChange, capture }) {
     if (!photo) return;
     setUploading(true);
     try {
-      const r = await api.uploadSelfie(photo);
+      const r = await api.uploadSelfie(photo, onWall);
       setShareUrl(r.data.url);
     } catch (_) {} finally { setUploading(false); }
   };
@@ -92,6 +94,10 @@ export function SelfieModal({ open, onOpenChange, capture }) {
         {photo && !shareUrl && (
           <div className="space-y-4 animate-rise" data-testid="selfie-result">
             <img src={photo} alt="Selfie with SECU" className="w-full rounded-lg" />
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer" data-testid="selfie-wall-optout">
+              <Checkbox checked={onWall} onCheckedChange={(v) => setOnWall(!!v)} data-testid="selfie-wall-checkbox" />
+              Show on the reception Selfie Wall (uncheck to keep private)
+            </label>
             <div className="grid grid-cols-3 gap-2">
               <Button onClick={download} className="h-11" data-testid="selfie-download-button">
                 <Download size={18} className="mr-1" /> Save

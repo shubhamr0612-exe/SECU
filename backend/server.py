@@ -496,6 +496,7 @@ async def vision_gesture(req: VisionRequest):
 # ---------------------------------------------------------------------------
 class SelfieUpload(BaseModel):
     image_base64: str
+    on_wall: Optional[bool] = True
 
 
 @api.post("/selfie/upload")
@@ -517,10 +518,23 @@ async def selfie_upload(body: SelfieUpload):
         raise HTTPException(status_code=502, detail="Could not save selfie right now")
     await db.selfies.insert_one({
         "_id": selfie_id, "storage_path": result.get("path", path),
-        "created_at": now_iso()})
+        "on_wall": bool(body.on_wall), "created_at": now_iso()})
     base = os.environ.get("PUBLIC_BASE_URL") or ""
     url = f"{base.rstrip('/')}/api/selfie/{selfie_id}" if base else f"/api/selfie/{selfie_id}"
     return {"ok": True, "id": selfie_id, "url": url, "path": f"/api/selfie/{selfie_id}"}
+
+
+@api.get("/selfies/recent")
+async def selfies_recent():
+    """Public wall: recent opt-in selfies for the reception gallery."""
+    docs = await db.selfies.find({"on_wall": True}).sort("created_at", -1).to_list(12)
+    base = os.environ.get("PUBLIC_BASE_URL") or ""
+    items = []
+    for d in docs:
+        sid = d["_id"]
+        url = f"{base.rstrip('/')}/api/selfie/{sid}" if base else f"/api/selfie/{sid}"
+        items.append({"id": sid, "url": url, "created_at": d.get("created_at")})
+    return {"selfies": items}
 
 
 @api.get("/selfie/{selfie_id}")

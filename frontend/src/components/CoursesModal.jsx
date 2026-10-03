@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Clock, Shield, IndianRupee, Loader2 } from "lucide-react";
+import { Clock, Shield, IndianRupee, Loader2, Calendar } from "lucide-react";
 
 export const CoursesModal = ({ open, onOpenChange, onAsk }) => {
   const [courses, setCourses] = useState([]);
@@ -60,6 +60,11 @@ export const CoursesModal = ({ open, onOpenChange, onAsk }) => {
                 </div>
                 {c.category && <p className="text-xs text-muted-foreground mt-1">{c.category}</p>}
                 {c.summary && <p className="text-sm text-muted-foreground mt-2">{c.summary}</p>}
+                {c.batch && (
+                  <p className="text-xs text-[#00F0FF] mt-2 flex items-center gap-1">
+                    <Calendar size={12} /> {c.batch}
+                  </p>
+                )}
                 {c.prerequisites && <p className="text-xs text-muted-foreground mt-1"><b>Prereq:</b> {c.prerequisites}</p>}
                 <Button variant="outline" size="sm" className="mt-3"
                         data-testid="ask-secu-course-button"

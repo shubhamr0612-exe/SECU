@@ -7,7 +7,7 @@ import { Textarea } from "./ui/textarea";
 import { Plus, Trash2, Save, Loader2, BookOpen, Building2, Calendar, Phone, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 
-const emptyCourse = () => ({ name: "", duration: "", fee: "", category: "", summary: "", prerequisites: "" });
+const emptyCourse = () => ({ name: "", duration: "", fee: "", category: "", batch: "", summary: "", prerequisites: "" });
 const emptyFaq = () => ({ q: "", a: "" });
 
 export function KnowledgeEditor() {
@@ -106,6 +106,7 @@ export function KnowledgeEditor() {
               <Input placeholder="Category (e.g. Cyber Security)" value={c.category} onChange={(e) => setCourse(i, "category", e.target.value)} />
             </div>
             <Input placeholder="Short summary" value={c.summary} onChange={(e) => setCourse(i, "summary", e.target.value)} />
+            <Input placeholder="Batch dates / timings (e.g. Starts 1 Aug · Mon-Fri 10am-12pm)" value={c.batch} onChange={(e) => setCourse(i, "batch", e.target.value)} data-testid="kb-course-batch" />
             <Input placeholder="Prerequisites (optional)" value={c.prerequisites} onChange={(e) => setCourse(i, "prerequisites", e.target.value)} />
             <Button variant="ghost" size="sm" className="text-red-400" onClick={() => setCourses(courses.filter((_, idx) => idx !== i))}><Trash2 size={16} className="mr-1" /> Remove</Button>
           </div>

@@ -10,12 +10,13 @@ import { SelfieModal } from "../components/SelfieModal";
 import { LeadForm } from "../components/LeadForm";
 import { QuizModal } from "../components/QuizModal";
 import { CoursesModal } from "../components/CoursesModal";
+import { SelfieWall } from "../components/SelfieWall";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import {
   Mic, MicOff, Send, BookOpen, Trophy, PhoneCall, RotateCcw, Lock,
-  Volume2, VolumeX, Camera, CameraOff, Eye, Sparkles, AlertTriangle,
+  Volume2, VolumeX, Camera, CameraOff, Eye, Sparkles, AlertTriangle, Images,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ export default function Reception() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [showCourses, setShowCourses] = useState(false);
   const [showSelfie, setShowSelfie] = useState(false);
+  const [showWall, setShowWall] = useState(false);
   const [voiceName, setVoiceName] = useState("nova");
 
   const scrollRef = useRef(null);
@@ -319,7 +321,7 @@ export default function Reception() {
 
       {/* quick actions dock */}
       <footer className="px-5 pb-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-6 gap-3">
           <Button variant="outline" className="h-14 text-base" data-testid="quick-action-courses-button"
                   onClick={() => setShowCourses(true)}>
             <BookOpen className="mr-2" size={20} /> Courses
@@ -340,6 +342,10 @@ export default function Reception() {
                   }}>
             <Sparkles className="mr-2" size={20} /> Selfie
           </Button>
+          <Button variant="outline" className="h-14 text-base" data-testid="selfie-wall-button"
+                  onClick={() => setShowWall(true)}>
+            <Images className="mr-2" size={20} /> Wall
+          </Button>
           <Button variant="outline" className="h-14 text-base col-span-2 sm:col-span-1" data-testid="quick-action-lead-button"
                   onClick={() => setShowLead(true)}>
             <PhoneCall className="mr-2" size={20} /> Callback
@@ -358,6 +364,7 @@ export default function Reception() {
       <QuizModal open={showQuiz} onOpenChange={setShowQuiz} onComplete={() => toast.success("Quiz complete! 🎉")} />
       <CoursesModal open={showCourses} onOpenChange={setShowCourses} onAsk={(q) => handleUserText(q)} />
       <SelfieModal open={showSelfie} onOpenChange={setShowSelfie} capture={() => captureRef.current && captureRef.current()} />
+      <SelfieWall open={showWall} onOpenChange={setShowWall} />
     </div>
   );
 }

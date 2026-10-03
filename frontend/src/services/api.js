@@ -30,7 +30,9 @@ export const api = {
   getVoices: () => client.get("/voice/voices"),
   synthesize: (text, voice, speed) =>
     client.post("/voice/synthesize", { text, voice, speed }, { responseType: "blob" }),
-  uploadSelfie: (image_base64) => client.post("/selfie/upload", { image_base64 }),
+  uploadSelfie: (image_base64, on_wall = true) =>
+    client.post("/selfie/upload", { image_base64, on_wall }),
+  getRecentSelfies: () => client.get("/selfies/recent"),
   login: (email, password) => client.post("/auth/login", { email, password }),
   me: () => client.get("/auth/me"),
 };

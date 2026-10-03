@@ -37,6 +37,10 @@ AI voice conversation, Hinglish, knowledge base (institute/courses/seminars/faq/
 - **Server-side TTS voice picker**: OpenAI TTS via Emergent key (`tts-1`, 9 voices, default nova), browser TTS fallback. Endpoints: GET `/api/voice/voices`, POST `/api/voice/synthesize`.
 - **Gesture recognition** via Gemini vision (wave/thumbs_up/peace/heart) — SECU reacts while camera on. Endpoint: POST `/api/vision/gesture`. Tested 100% (25/25 backend).
 
+### V4 (2026-10-03)
+- **Batch timings**: courses now have a `batch` field in the Knowledge editor (dates/timings); shown on the Courses screen and used by SECU (verified via chat: SECU states the batch start time).
+- **Selfie Wall**: reception dock **Wall** button opens a live gallery (`/api/selfies/recent`, refreshes every 15s) of selfies visitors opted to share. Selfie upload has an **opt-out checkbox** (`on_wall`, default on); opted-out selfies never appear on the wall. Tested: opted-out selfie excluded from wall.
+
 ## Security / Privacy
 JWT + bcrypt, token-gated admin APIs, output sanitisation, CORS via env, no keys in frontend, user-friendly errors. Camera strictly opt-in; vision prompt enforces neutral-only commentary; `app/services/camera.py` remains a disabled isolated interface for future auto-features.
 
