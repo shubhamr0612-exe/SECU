@@ -1,0 +1,24 @@
+{
+  "summary": "Verified fix for 'avatar face moves before voice' bug on Reception page. Sampled data-state of secu-avatar-3d every 400ms for 8s after sending 'Hello' via text-input + send-text-button. Timeline: THINKING (0-1600ms) -> IDLE during TTS fetch (2000-3600ms) -> SPEAKING only once audio playback started (4400ms+). SPEAKING never appeared before/at the thinking phase. Badge transitioned correctly ('Thinking...' -> 'Ready to chat' briefly -> 'SECU is speaking'). Reset-session-button cleared the conversation. No console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Reception avatar", "issues": ["Minor: avatar-status-badge flipped to 'SECU is speaking' ~400ms before data-state attribute transitioned to SPEAKING (badge driven by voice.speaking state, data-state propagates via HackerAvatar3D re-render). Not user-visible as a bug since mouth animation is tied to data-state/speaking state and starts with audio playback. Noted for awareness only."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "useVoice.js fix is correct: speakingRef (mic gate) set synchronously while visual setSpeaking(true) deferred to audio.onplay / utterance.onstart, which decouples visual lip-sync from TTS fetch latency."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "not needed for this bug",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Primary bug 'avatar face moves before voice' is FIXED. Verified timeline sampling of data-state on [data-testid=secu-avatar-3d] confirms SPEAKING only begins after TTS fetch completes (~4.4s post-send in current env). Text input path drives the same speak() code path as mic. Audio DOES play in headless chromium.",
+  "rca of the issue": "RCA: In useVoice.js speak(), the visual React state setSpeaking(true) was called immediately upon invocation; however OpenAI TTS fetch takes ~1-2s, during which the avatar's SPEAKING animation (mouth) was already running without any audio. Fix moves setSpeaking(true) into audio.onplay (server TTS) and utterance.onstart (browser fallback) handlers, while keeping speakingRef mic-gate synchronous. Verified by polling data-state attribute: SPEAKING appears only after a THINKING -> IDLE (fetch) -> SPEAKING sequence, never before fetch completes."
+}

@@ -2,6 +2,7 @@ import { Shield, Bot } from "lucide-react";
 
 const STATE_STYLES = {
   IDLE: { ring: "#00F0FF", glow: "rgba(0,240,255,0.35)", label: "Ready to chat" },
+  WAKE: { ring: "#00F0FF", glow: "rgba(0,240,255,0.25)", label: "Say \"Hey SECU\"" },
   LISTENING: { ring: "#3B82F6", glow: "rgba(59,130,246,0.5)", label: "Listening to you..." },
   THINKING: { ring: "#F59E0B", glow: "rgba(245,158,11,0.45)", label: "Thinking..." },
   SPEAKING: { ring: "#10B981", glow: "rgba(16,185,129,0.5)", label: "SECU is speaking" },

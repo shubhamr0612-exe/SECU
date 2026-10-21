@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useVoice } from "../hooks/useVoice";
-import HackerAvatar3D from "../components/HackerAvatar3D";
+import HackerAvatarGif from "../components/HackerAvatarGif";
 import { stateLabel, stateColor } from "../components/Avatar";
 import { VoiceVisualizer } from "../components/VoiceVisualizer";
 import { CameraView } from "../components/CameraView";
@@ -20,8 +20,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const WELCOME = "Hey! Welcome to eSecurityIn! I'm SECU. How's your day going?";
-const VOICES = ["nova", "shimmer", "alloy", "echo", "fable", "onyx", "coral", "ash", "sage"];
+const WELCOME = {
+  "en-IN": "Hey! Welcome to eSecurityIn! I'm SECU. How's your day going?",
+  "hi-IN": "Namaste! eSecurityIn mein aapka swagat hai! Main SECU hoon. Aaj aapka din kaisa ja raha hai?",
+};
+const RESUME = { "en-IN": "Yes, I'm listening!", "hi-IN": "Haan, boliye! Main sun raha hoon." };
+const IDLE_RESET_MS = 90000;
+const VOICES = ["indian", "nova", "shimmer", "alloy", "echo", "fable", "onyx", "coral", "ash", "sage"];
 
 let _msgId = 0;
 const newMsg = (role, message) => ({ id: `m${_msgId++}`, role, message });
@@ -40,17 +45,18 @@ export default function Reception() {
   const [showCourses, setShowCourses] = useState(false);
   const [showSelfie, setShowSelfie] = useState(false);
   const [showWall, setShowWall] = useState(false);
-  const [voiceName, setVoiceName] = useState("nova");
+  const [voiceName, setVoiceName] = useState("indian");
 
   const scrollRef = useRef(null);
   const mutedRef = useRef(muted); mutedRef.current = muted;
   const voiceNameRef = useRef(voiceName); voiceNameRef.current = voiceName;
   const captureRef = useRef(null);
   const busyRef = useRef(false);
+  const lastActivityRef = useRef(Date.now());
 
   // Server-side TTS: returns an audio Blob, or null to fall back to browser voice.
   const ttsFetcher = useCallback(async (text) => {
-    if (mutedRef.current) return null;
+    if (mutedRef.current || voiceNameRef.current === "indian") return null;
     try {
       const r = await api.synthesize(text, voiceNameRef.current, 1.05);
       return r.data;
@@ -67,6 +73,7 @@ export default function Reception() {
   const handleUserText = useCallback(async (text) => {
     if (!text?.trim() || busyRef.current) return;
     busyRef.current = true;
+    lastActivityRef.current = Date.now();
     setMessages((m) => [...m, newMsg("user", text)]);
     setThinking(true);
     try {
@@ -88,7 +95,27 @@ export default function Reception() {
     }
   }, [sessionId, lang, speakOut]);
 
-  const voice = useVoice({ lang, onUtterance: handleUserText, ttsFetcher });
+  const startedRef = useRef(started); startedRef.current = started;
+  const onWake = () => {
+    lastActivityRef.current = Date.now();
+    if (!startedRef.current) { begin(); return; } // eslint-disable-line no-use-before-define
+    speakOut(RESUME[lang]);
+  };
+
+  const voice = useVoice({ lang, onUtterance: handleUserText, onWake, ttsFetcher });
+
+  // Kiosk idle: always listen for "Hey SECU" from the start.
+  useEffect(() => { if (voice.supported) voice.startWake(); }, []); // eslint-disable-line
+
+  // Return to wake-word mode after a period of silence.
+  useEffect(() => {
+    if (!started) return;
+    const t = setInterval(() => {
+      if (busyRef.current || voice.speaking || thinking) { return; }
+      if (Date.now() - lastActivityRef.current > IDLE_RESET_MS) resetSession(true);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [started, voice.speaking, thinking]); // eslint-disable-line
 
   // Camera reaction (consented): SECU reacts to a single live frame.
   const reactToCamera = useCallback(async () => {
@@ -148,26 +175,29 @@ export default function Reception() {
 
   const displayState = voice.speaking ? "SPEAKING"
     : thinking ? "THINKING"
-    : voice.listening ? "LISTENING" : "IDLE";
+    : voice.autoMode && voice.listening ? "LISTENING"
+    : voice.wakeMode ? "WAKE" : "IDLE";
 
   const begin = async () => {
     setStarted(true);
-    setMessages([newMsg("assistant", WELCOME)]);
+    lastActivityRef.current = Date.now();
+    setMessages([newMsg("assistant", WELCOME[lang])]);
     if (voice.supported) voice.startAuto();
-    await speakOut(WELCOME);
+    await speakOut(WELCOME[lang]);
   };
 
   const toggleMic = () => {
     if (!started) { begin(); return; }
-    if (voice.autoMode) { voice.stopAuto(); toast.info("Hands-free paused."); }
-    else { voice.startAuto(); toast.success("Hands-free on — just talk!"); }
+    if (voice.autoMode) { voice.stopAuto(); toast.info('Paused — say "Hey SECU" to continue.'); }
+    else { lastActivityRef.current = Date.now(); voice.startAuto(); toast.success("Hands-free on — just talk!"); }
   };
 
-  const resetSession = () => {
+  const resetSession = (silent = false) => {
     voice.stopSpeaking();
     setMessages([]); setSessionId(null); setStarted(false); setThinking(false);
     voice.stopAuto();
-    toast.success("New conversation started.");
+    if (voice.supported && !voice.wakeMode) voice.startWake();
+    if (silent !== true) toast.success('New conversation — say "Hey SECU" to start.');
   };
 
   const sendTyped = (e) => {
@@ -195,14 +225,14 @@ export default function Reception() {
           </div>
           <div>
             <p className="font-heading font-bold leading-tight">eSecurityIn</p>
-            <p className="text-xs text-muted-foreground">AI Reception · v2</p>
+            <p className="text-xs text-muted-foreground">AI Reception · v3</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Select value={voiceName} onValueChange={setVoiceName}>
-            <SelectTrigger className="w-24 h-9" data-testid="voice-picker"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28 h-9" data-testid="voice-picker"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {VOICES.map((v) => <SelectItem key={v} value={v} className="capitalize">{v}</SelectItem>)}
+              {VOICES.map((v) => <SelectItem key={v} value={v} className="capitalize" data-testid={`voice-option-${v}`}>{v === "indian" ? "Indian" : v}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" data-testid="language-toggle-button"
@@ -228,6 +258,11 @@ export default function Reception() {
                   style={{ color: stateColor(displayState) }}>
               {stateLabel(displayState)}
             </span>
+            {voice.wakeMode && !voice.autoMode && (
+              <span data-testid="wake-word-badge" className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">
+                ● WAKE WORD ON
+              </span>
+            )}
             {voice.autoMode && (
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
                 ● LIVE
@@ -235,12 +270,21 @@ export default function Reception() {
             )}
           </div>
 
-          <HackerAvatar3D state={displayState} />
+          <HackerAvatarGif state={displayState} />
 
           <h1 className="font-heading text-4xl sm:text-5xl font-extrabold -mt-2">SECU</h1>
           <p className="text-muted-foreground mt-1">eSecurityIn AI Buddy</p>
 
-          {!started && <p className="text-lg mt-3 animate-float">"Hey! Come talk to me 👋"</p>}
+          {!started && (
+            <p data-testid="wake-word-hint" className="text-lg mt-3 animate-float">
+              {voice.wakeMode ? 'Just say "Hey SECU" 👋' : '"Hey! Come talk to me 👋"'}
+            </p>
+          )}
+          {voiceName === "indian" && (
+            <p data-testid="indian-voice-label" className="text-[10px] font-mono text-muted-foreground mt-1">
+              Voice: {voice.voiceLabel || "Indian voice not found on this device — using default"}
+            </p>
+          )}
 
           <div className="mt-4 w-full max-w-sm">
             <VoiceVisualizer active={displayState === "LISTENING" || displayState === "SPEAKING"} color={stateColor(displayState)} />
@@ -271,7 +315,8 @@ export default function Reception() {
             {voice.autoMode ? <Mic size={34} color={stateColor(displayState)} /> : <MicOff size={34} color={stateColor(displayState)} />}
           </button>
           <p className="text-sm font-semibold mt-3 tracking-wide">
-            {!started ? "START TALKING" : voice.autoMode ? "Listening hands-free · tap to pause" : "Tap to resume hands-free"}
+            {!started ? (voice.wakeMode ? 'SAY "HEY SECU" OR TAP' : "START TALKING")
+              : voice.autoMode ? "Listening hands-free · tap to pause" : 'Paused · say "Hey SECU" or tap'}
           </p>
 
           {!voice.supported && (
@@ -285,7 +330,7 @@ export default function Reception() {
         <section className="glass rounded-2xl flex flex-col h-[70vh] lg:h-auto">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="font-heading font-semibold">Conversation</span>
-            <Button variant="ghost" size="sm" onClick={resetSession} data-testid="reset-session-button">
+            <Button variant="ghost" size="sm" onClick={() => resetSession()} data-testid="reset-session-button">
               <RotateCcw size={16} className="mr-1" /> New
             </Button>
           </div>
@@ -294,7 +339,7 @@ export default function Reception() {
                className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
             {messages.length === 0 && (
               <p className="text-center text-muted-foreground text-sm mt-10">
-                Tap START TALKING and just speak — SECU listens hands-free.
+                Say "Hey SECU" or tap the mic — SECU listens hands-free.
               </p>
             )}
             {messages.map((m) => (
