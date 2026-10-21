@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only test of SECU v3 (Hey SECU wake word, hacker-mask video avatar, Indian browser voice). Verified on desktop 1920x1080: avatar data-state=WAKE at idle; status badge 'Say \"Hey SECU\"', wake-word-badge 'WAKE WORD ON', wake-word-hint visible; voice-picker default 'Indian', indian-voice-label shows fallback text (headless has no en-IN voice), switching to nova hides label and switching back shows it again. Wake word simulated with a mocked webkitSpeechRecognition: a non-wake transcript ('hello there') was ignored, 'hey secu' started the conversation with the welcome message and moved to LISTENING, a voice utterance in hands-free mode got a correct AI reply about the 45-day course, tapping the mic paused with the toast 'Paused — say \"Hey SECU\" to continue.' and went back to WAKE, 'hi seku' while paused resumed LISTENING, and reset cleared the conversation and returned to WAKE with recognition still running. Hindi: the toggle EN->HI recreated recognition still in wake mode, and 'हे सेकू' started the conversation with the 'Namaste! eSecurityIn mein aapka swagat hai!...' welcome. Typed chat works. Mic tap starts with the welcome. Courses, Quiz, Callback and Selfie Wall modals open. Admin login redirects to /admin dashboard. No page errors. One issue: the video does not decode in Playwright Chromium (MediaError code 4), because the mp4 is H.264 (avc1) and that browser has no H.264 codec (canPlayType h264 = '', webm/vp9 = 'probably'). The poster image shows as a fallback.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HackerAvatarGif video", "issue": "secu-hacker.mp4 is H.264 only. In H.264-less Chromium builds (Playwright/open-source Chromium, some Linux kiosk builds) the video fails with MEDIA_ERR_SRC_NOT_SUPPORTED (code 4) and only the static poster shows. Google Chrome, Edge and Safari will play it. File serves 200 video/mp4 (83KB).", "selector": "[data-testid=secu-avatar-media]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add a VP9/WebM version (e.g. /secu-hacker.webm) as the first <source> inside the <video>, and keep the mp4 as the fallback, so the avatar animates in every Chromium build",
+    "Optional: onWake receives hit.rest (e.g. 'hey secu what courses do you have') but Reception.onWake ignores it; consider passing rest to handleUserText after the welcome"
+  ],
+  "critical_code_review_comments": [
+    "Reception.onWake ignores the 'rest' argument, so a question spoken in the same breath as the wake word is lost.",
+    "Idle-reset interval calls resetSession from a closure with possibly stale voice.wakeMode. It is harmless because startWake is idempotent (start() is wrapped in try/catch), but it is fragile.",
+    "WAKE_RE allows an optional prefix and loose variants like 'siku' or 'he secu'. False positives are possible in a noisy reception area. Acceptable for a kiosk, but you could require the hey/hi prefix for the short variants."
+  ],
+  "updated_files": ["/app/test_reports/iteration_5.json"],
+  "success_rate": {"backend": "n/a (frontend only)", "frontend": "95% (all flows pass; video codec issue in Chromium without H.264)"},
+  "test_credentials": "admin@esecurityin.com / SecuAdmin@2026 (from /app/memory/test_credentials.md) - works",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Simulate the wake word by injecting a FakeSR class via page.add_init_script that sets window.__rec, then call rec.onresult({resultIndex:0, results:[[{transcript:'hey secu'}]] with isFinal=true}). Playwright Chromium cannot decode H.264, so check video playback with canPlayType or after a WebM source is added.",
+  "rca of the issue": "Video not playing in test browser: public/secu-hacker.mp4 contains an avc1 (H.264) track. Playwright's Chromium ships without proprietary codecs, so canPlayType('video/mp4; codecs=avc1') returns '' and video.error.code=4. Fix: transcode to WebM VP9 and list it as the first <source>."
+}

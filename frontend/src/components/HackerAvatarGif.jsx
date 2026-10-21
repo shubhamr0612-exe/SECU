@@ -22,10 +22,13 @@ export default function HackerAvatarGif({ state = "IDLE" }) {
       <div className="relative w-full h-full rounded-2xl overflow-hidden"
            style={{ border: `2px solid ${color}`, boxShadow: `0 0 ${state === "SPEAKING" ? 48 : 28}px ${color}88`,
                     transition: "box-shadow .3s ease, border-color .3s ease" }}>
-        <video ref={vid} data-testid="secu-avatar-media" src="/secu-hacker.mp4" poster="/secu-hacker-poster.jpg"
+        <video ref={vid} data-testid="secu-avatar-media" poster="/secu-hacker-poster.jpg"
                autoPlay loop muted playsInline className="w-full h-full object-cover"
                style={{ filter: state === "THINKING" ? "hue-rotate(-150deg) saturate(1.2)" : state === "WAKE" ? "brightness(.7) saturate(.6)" : "none",
-                        transition: "filter .4s ease" }} />
+                        transition: "filter .4s ease" }}>
+          <source src="/secu-hacker.webm" type="video/webm" />
+          <source src="/secu-hacker.mp4" type="video/mp4" />
+        </video>
         <div className="absolute inset-0 pointer-events-none mix-blend-overlay"
              style={{ background: `linear-gradient(180deg, transparent 55%, ${color}55)` }} />
       </div>

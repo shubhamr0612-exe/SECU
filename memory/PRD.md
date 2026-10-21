@@ -53,3 +53,9 @@ JWT + bcrypt, token-gated admin APIs, output sanitisation, CORS via env, no keys
 
 ## Admin
 admin@esecurityin.com / SecuAdmin@2026 (see /app/memory/test_credentials.md).
+
+## v3 (June 2026)
+- "Hey SECU" wake word: kiosk listens from idle (browser speech recognition); detects English/Hindi spellings (hey secu/seku/sekyu, हे सेकू). Pause → back to wake mode; 90s silence → auto reset to wake mode.
+- Avatar: Pixabay hacker-mask GIF converted to looping /secu-hacker.webm + .mp4 (+poster); glow/speed/tint change per state (WAKE/LISTENING/THINKING/SPEAKING). Three.js avatar removed.
+- Indian voice: default voice "Indian" = browser en-IN / hi-IN voice (Neerja, Swara, Google हिन्दी etc.); OpenAI voices still selectable. Hindi mode greets in Hinglish.
+- Tested: iteration_5 (frontend 95% → codec issue fixed with WebM).
