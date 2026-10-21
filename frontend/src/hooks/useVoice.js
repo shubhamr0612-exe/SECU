@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { matchWake } from "./wakeWord";
 
 // Hands-free continuous voice. STT via browser Web Speech API. TTS tries a
 // server-side voice (ttsFetcher -> audio Blob); falls back to browser speech.
 // The mic auto-pauses while SECU speaks and resumes afterwards.
-// "Hey SECU" detection: tolerant of common STT spellings in English and Hindi.
-const WAKE_RE = /(^|\s|\b)(hey|hi|hay|he|ok|okay|हे|है|हाय|ए)?\s*(secu|seku|sekyu|sekhu|sequ|sec\s?u|se\s?ku|seek\s?you|sick\s?you|sikyu|siku|सेकू|सेकु|सीकू|सेक्यू|सिक्यू)(\b|\s|$|[.,!?])/i;
-export const matchWake = (t) => {
-  const m = (t || "").match(WAKE_RE);
-  return m ? { rest: t.slice(m.index + m[0].length).trim() } : null;
-};
 
 // Indian voices only: hi-IN for Hindi; en-IN for English (hi-IN as a fallback accent).
 const NAME_PREF = /neerja|swara|heera|kalpana|ravi|prabhat|madhur|hemant|google|lekha|veena|rishi/i;
@@ -29,6 +24,7 @@ export function useVoice({ onUtterance, onWake, lang = "en-IN", ttsFetcher } = {
   const [autoMode, setAutoMode] = useState(false);
   const [wakeMode, setWakeMode] = useState(false);
   const [voiceLabel, setVoiceLabel] = useState("");
+  const [lastHeard, setLastHeard] = useState("");
   const [error, setError] = useState(null);
 
   const recRef = useRef(null);
@@ -63,17 +59,20 @@ export function useVoice({ onUtterance, onWake, lang = "en-IN", ttsFetcher } = {
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = lang;
+    rec.maxAlternatives = 3;
 
     rec.onstart = () => setListening(true);
     rec.onresult = (e) => {
       if (speakingRef.current) return;
       if (wakeRef.current && !autoRef.current) {
-        let heard = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) heard += " " + e.results[i][0].transcript;
-        const hit = matchWake(heard);
-        if (hit) {
+        const alts = ["", "", ""];
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          for (let j = 0; j < Math.min(3, e.results[i].length); j++) alts[j] += " " + e.results[i][j].transcript;
+        }
+        setLastHeard(alts[0].trim());
+        if (alts.some((a) => a && matchWake(a))) {
           autoRef.current = true; setAutoMode(true); finalRef.current = "";
-          if (onWakeRef.current) onWakeRef.current(hit.rest);
+          if (onWakeRef.current) onWakeRef.current();
         }
         return;
       }
@@ -194,6 +193,6 @@ export function useVoice({ onUtterance, onWake, lang = "en-IN", ttsFetcher } = {
     speakingRef.current = false; setSpeaking(false);
   }, []);
 
-  return { listening, speaking, supported, autoMode, wakeMode, voiceLabel, error,
+  return { listening, speaking, supported, autoMode, wakeMode, voiceLabel, lastHeard, error,
            startAuto, stopAuto, startWake, stopWake, speak, stopSpeaking };
 }

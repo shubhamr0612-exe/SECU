@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useVoice } from "../hooks/useVoice";
+import { useMotionDetect } from "../hooks/useMotionDetect";
 import HackerAvatarGif from "../components/HackerAvatarGif";
 import { stateLabel, stateColor } from "../components/Avatar";
 import { VoiceVisualizer } from "../components/VoiceVisualizer";
@@ -26,6 +27,8 @@ const WELCOME = {
 };
 const RESUME = { "en-IN": "Yes, I'm listening!", "hi-IN": "Haan, boliye! Main sun raha hoon." };
 const IDLE_RESET_MS = 90000;
+const VISITOR_COOLDOWN_MS = 45000;
+const INVITE = { "en-IN": 'Say "Hey SECU" whenever you want to chat!', "hi-IN": 'Baat karni ho to bas "Hey SECU" boliye!' };
 const VOICES = ["indian", "nova", "shimmer", "alloy", "echo", "fable", "onyx", "coral", "ash", "sage"];
 
 let _msgId = 0;
@@ -53,6 +56,7 @@ export default function Reception() {
   const captureRef = useRef(null);
   const busyRef = useRef(false);
   const lastActivityRef = useRef(Date.now());
+  const lastVisitorCheckRef = useRef(0);
 
   // Server-side TTS: returns an audio Blob, or null to fall back to browser voice.
   const ttsFetcher = useCallback(async (text) => {
@@ -107,6 +111,27 @@ export default function Reception() {
   // Kiosk idle: always listen for "Hey SECU" from the start.
   useEffect(() => { if (voice.supported) voice.startWake(); }, []); // eslint-disable-line
 
+  // Visitor welcome: motion on camera while idle -> confirm a person via vision -> greet, then wait for "Hey SECU".
+  const greetVisitor = async () => {
+    const now = Date.now();
+    if (startedRef.current || busyRef.current || voice.speaking || now - lastVisitorCheckRef.current < 8000) return;
+    const img = captureRef.current && captureRef.current();
+    if (!img) return;
+    lastVisitorCheckRef.current = now;
+    busyRef.current = true;
+    try {
+      const r = await api.observe(img);
+      if (r.data.comment && !startedRef.current) {
+        lastVisitorCheckRef.current = Date.now() + VISITOR_COOLDOWN_MS;
+        const line = `Hi there! 👋 ${r.data.comment} ${INVITE[lang]}`;
+        setMessages([newMsg("assistant", line)]);
+        await speakOut(line);
+      }
+    } catch (e) { console.error("visitor check failed", e); }
+    finally { busyRef.current = false; }
+  };
+  useMotionDetect({ enabled: cameraOn && !started, onMotion: greetVisitor });
+
   // Return to wake-word mode after a period of silence.
   useEffect(() => {
     if (!started) return;
@@ -142,9 +167,9 @@ export default function Reception() {
   // Periodic friendly camera reactions + gesture detection while camera is on.
   useEffect(() => {
     if (!cameraOn) return;
-    const first = setTimeout(reactToCamera, 2800);
+    const first = setTimeout(() => { if (startedRef.current) reactToCamera(); }, 2800);
     const sceneInterval = setInterval(() => {
-      if (!voice.speaking && !thinking) reactToCamera();
+      if (startedRef.current && !voice.speaking && !thinking) reactToCamera();
     }, 34000);
     const gestureInterval = setInterval(async () => {
       if (busyRef.current || voice.speaking || thinking) return;
@@ -269,6 +294,11 @@ export default function Reception() {
               </span>
             )}
           </div>
+          {voice.wakeMode && !voice.autoMode && voice.lastHeard && (
+            <p data-testid="wake-last-heard" className="text-[10px] font-mono text-muted-foreground mb-1 max-w-xs truncate">
+              heard: "{voice.lastHeard}"
+            </p>
+          )}
 
           <HackerAvatarGif state={displayState} />
 

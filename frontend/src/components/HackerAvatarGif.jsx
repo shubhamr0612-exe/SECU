@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { stateColor } from "./Avatar";
 
-const RATE = { IDLE: 0.8, WAKE: 0.6, LISTENING: 1, THINKING: 0.5, SPEAKING: 1.35 };
 
 export default function HackerAvatarGif({ state = "IDLE" }) {
   const vid = useRef(null);
@@ -9,7 +8,11 @@ export default function HackerAvatarGif({ state = "IDLE" }) {
   const pulsing = state === "LISTENING" || state === "SPEAKING";
 
   useEffect(() => {
-    if (vid.current) vid.current.playbackRate = RATE[state] || 1;
+    const v = vid.current;
+    if (!v) return;
+    // Mouth moves only while SECU actually speaks; otherwise hold the still first frame.
+    if (state === "SPEAKING") { v.playbackRate = 1.25; v.play().catch(() => {}); }
+    else { v.pause(); v.currentTime = 0; }
   }, [state]);
 
   return (
@@ -23,7 +26,7 @@ export default function HackerAvatarGif({ state = "IDLE" }) {
            style={{ border: `2px solid ${color}`, boxShadow: `0 0 ${state === "SPEAKING" ? 48 : 28}px ${color}88`,
                     transition: "box-shadow .3s ease, border-color .3s ease" }}>
         <video ref={vid} data-testid="secu-avatar-media" poster="/secu-hacker-poster.jpg"
-               autoPlay loop muted playsInline className="w-full h-full object-cover"
+               loop muted playsInline preload="auto" className="w-full h-full object-cover"
                style={{ filter: state === "THINKING" ? "hue-rotate(-150deg) saturate(1.2)" : state === "WAKE" ? "brightness(.7) saturate(.6)" : "none",
                         transition: "filter .4s ease" }}>
           <source src="/secu-hacker.webm" type="video/webm" />
