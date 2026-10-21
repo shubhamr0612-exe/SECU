@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only test of the wake-word fix, speaking-only avatar animation and Visitor Welcome, plus regression. Desktop 1920x1080, with webkitSpeechRecognition, speechSynthesis and getUserMedia (a changing canvas stream) mocked, and /api/vision/observe and /api/vision/gesture routed to mock responses. WAKE: each of 'hey secu', 'hey sexy', 'hey secure', 'hey sec you' started the conversation with the welcome. With HI selected, 'हे सेकू' started it with the Namaste welcome. A match on the 2nd alternative alone also woke it (alt0='hello sir', alt1='hey seku'). 'hello there', 'ok so can you tell me' and 'see you later' did NOT wake, and wake-last-heard showed the transcript (heard: \"...\"). AVATAR: the webm source loads with no error. Sampled every 250ms, the video was paused at currentTime 0 in WAKE, LISTENING and THINKING, and playing (currentTime advancing) only while data-state=SPEAKING. This held for both the welcome and a typed chat reply. VISITOR WELCOME: with the camera on and the conversation not started, motion made exactly 1 observe call. The transcript showed 'Hi there! 👋 Nice blue jacket! Say \"Hey SECU\" whenever you want to chat!' and it was spoken. The state went back to WAKE with the hint and badge still shown, and there were no more observe calls in the next 15s (cooldown). Saying 'hey secu' afterwards started the conversation. With comment=null nothing was said or added. REGRESSION: typed chat works (the reply about the 45-day course was spoken), mic tap starts LISTENING with the welcome, a 2nd tap pauses back to WAKE, and reset returns to WAKE with the hint. The Courses, Quiz, Callback and Wall dialogs open. Admin login redirects to /admin, the Knowledge Base tab loads the course editor (1 course) and Add course adds a row (not saved). No page errors. All requested flows pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Wake word false positives (matchWake)", "issue": "Because 'a' is in GREET and soundsLikeSecu accepts any skeleton 'sk' plus 1 more consonant, ordinary speech wakes the kiosk. Checked in node: 'I study in a school', 'wait a sec', 'I am a seeker', 'there is a scar', 'in a sky', 'ok school', 'ok skip', 'hey six', 'hello sky', 'hello sakshi', 'a sikh' all return a match. In a busy reception this can start conversations by accident.", "affected_selectors": ["[data-testid=secu-avatar]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional (MEDIUM): cut wake-word false positives. Drop 'a', 'ae' and 'ay' from GREET, or require a 2nd condition for them (e.g. the next word is in NAMES). Consider limiting the skeleton fallback to 'sk' plus an optional single 'k', or to known variants only (so 'school', 'scar', 'skip', 'sky' don't match).",
+    "Optional (LOW): when observe returns comment=null, greetVisitor calls the vision API again every 8s for as long as motion continues (seen: 2 calls in 12s). Consider a longer back-off after a null result to save LLM cost.",
+    "Optional (LOW): the gesture interval also runs while not started (idle kiosk), so a detected gesture could speak and add a message before the wake word. Check that this is intended."
+  ],
+  "critical_code_review_comments": [
+    "wakeWord.js: the 'a' greeting plus the loose skeleton rule causes false positives (see above).",
+    "Reception.greetVisitor: the cooldown is set as lastVisitorCheckRef = now + 45s, and the check is now - last < 8000, so the effective cooldown is about 53s. That is fine, but the logic is not obvious; a separate nextAllowedAt ref would be clearer.",
+    "greetVisitor replaces messages with setMessages([line]); begin() later replaces it with the welcome. That is fine for a kiosk."
+  ],
+  "updated_files": ["/app/test_reports/iteration_6.json"],
+  "success_rate": {"backend": "n/a (frontend only)", "frontend": "100% of requested flows"},
+  "test_credentials": "admin@esecurityin.com / SecuAdmin@2026 - works",
+  "seed_data_creation": "none (KB add-course row was not saved)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Mocks via context.add_init_script: a FakeSR class (push instances to window.__recs; __say(alts) calls the last instance's onresult with results [[{transcript}...]] and isFinal), speechSynthesis.speak overridden to fire onstart after 50ms and onend after 1.5-3s, getUserMedia returning canvas.captureStream with a black/white flip every 600ms, and page.route for /api/vision/observe and /api/vision/gesture. Watch out: many rapid page reloads triggered a Cloudflare bot challenge on the preview URL. Wait about 60s and use fewer reloads per script."
+}

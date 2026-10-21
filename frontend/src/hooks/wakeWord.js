@@ -1,7 +1,7 @@
 // Fuzzy "Hey SECU" detection: speech-to-text rarely spells "SECU" the same way twice
 // (secu, seku, sexy, secure, seiko, sec you, हे सेकू ...), so we match by sound.
 const NAMES = /^(secu|seku|sekyu|sekhu|sequ|sikyu|siku|seiku|sekku|sikku|सेकू|सेकु|सीकू|सेक्यू|सिक्यू|सिकु|सेक्यु|सिक्कू|सेक्कू)$/;
-const GREET = /^(hey|hi|hay|hai|he|hello|helo|hallo|ok|okay|a|ae|ay|hei|हे|है|हाय|हेलो|हैलो|ए|ओके)$/;
+const GREET = /^(hey|hi|hay|hai|hello|helo|hallo|ok|okay|hei|हे|है|हाय|हेलो|हैलो|ओके)$/;
 const SPLIT_HEAD = /^(se|sea|see|si|sec|sek|seek|sik|sick|siq|six|सी|से|सेक|सिक)$/;
 const SPLIT_TAIL = /^(you|yu|u|q|cu|ku|coo|koo|kyu|queue|cue|क्यू|कू|यू)$/;
 
@@ -13,7 +13,7 @@ const soundsLikeSecu = (w) => {
   if (NAMES.test(w)) return true;
   if (/^[\u0900-\u097F]+$/.test(w)) return /^[सश]/.test(w) && /क/.test(w);
   const s = skeleton(w);
-  return s.startsWith("sk") && s.length <= 3;
+  return w.length >= 4 && ["sk", "sks", "skr"].includes(s) && /(u|oo|o|y|ure)$/.test(w);
 };
 
 export const matchWake = (text) => {

@@ -59,3 +59,10 @@ admin@esecurityin.com / SecuAdmin@2026 (see /app/memory/test_credentials.md).
 - Avatar: Pixabay hacker-mask GIF converted to looping /secu-hacker.webm + .mp4 (+poster); glow/speed/tint change per state (WAKE/LISTENING/THINKING/SPEAKING). Three.js avatar removed.
 - Indian voice: default voice "Indian" = browser en-IN / hi-IN voice (Neerja, Swara, Google हिन्दी etc.); OpenAI voices still selectable. Hindi mode greets in Hinglish.
 - Tested: iteration_5 (frontend 95% → codec issue fixed with WebM).
+
+## v3.1 (June 2026)
+- Wake word fix: fuzzy sound-alike matching (hooks/wakeWord.js) across 3 STT alternatives (secu/seku/sexy/secure/sec you/हे सेकू...), false positives tightened; "heard:" debug line under status badge in wake mode.
+- Avatar mouth: video plays only while SECU is SPEAKING, holds still frame otherwise.
+- Visitor Welcome: camera on + idle → on-device motion detect (hooks/useMotionDetect.js) → /api/vision/observe confirms person → SECU greets once (45s cooldown) and waits for "Hey SECU".
+- Courses: user kept existing Admin → Knowledge Base course editor (Mongo `knowledge` doc).
+- Tested: iteration_6 (100% flows; false-positive issue fixed after).
