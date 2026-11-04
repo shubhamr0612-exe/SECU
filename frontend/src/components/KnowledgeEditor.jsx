@@ -4,12 +4,11 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Plus, Trash2, Save, Loader2, BookOpen, Building2, Calendar, Phone, HelpCircle } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Building2, Calendar, Phone, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 
 let _uidCounter = 0;
 const uid = () => `kb_${Date.now()}_${_uidCounter++}`;
-const emptyCourse = () => ({ _uid: uid(), name: "", duration: "", fee: "", category: "", batch: "", summary: "", prerequisites: "" });
 const emptyFaq = () => ({ _uid: uid(), q: "", a: "" });
 
 export function KnowledgeEditor() {
@@ -18,7 +17,6 @@ export function KnowledgeEditor() {
 
   // flattened editable state
   const [institute, setInstitute] = useState({ name: "", tagline: "", description: "" });
-  const [courses, setCourses] = useState([]);
   const [seminarsAbout, setSeminarsAbout] = useState("");
   const [seminarTopics, setSeminarTopics] = useState("");
   const [contact, setContact] = useState({ phone: "", email: "", website: "", address: "" });
@@ -30,8 +28,6 @@ export function KnowledgeEditor() {
       setKb(d);
       const inst = d.institute || {};
       setInstitute({ name: inst.name || "", tagline: inst.tagline || "", description: inst.description || "" });
-      const cs = (d.courses && Array.isArray(d.courses.courses)) ? d.courses.courses : [];
-      setCourses(cs.map((c) => ({ ...emptyCourse(), ...c })));
       const sem = d.seminars || {};
       setSeminarsAbout(sem.about || "");
       setSeminarTopics((sem.topics_commonly_covered || []).join(", "));
@@ -47,12 +43,6 @@ export function KnowledgeEditor() {
     try {
       const payload = {
         institute: { ...(kb?.institute || {}), ...institute },
-        courses: {
-          ...(kb?.courses || {}),
-          courses: courses.filter((c) => c.name.trim()).map(({ _uid, ...c }) => c),
-          interest_categories: (kb?.courses?.interest_categories) ||
-            ["Cyber Security", "Cloud Security", "AI Security", "Ethical Hacking", "Other"],
-        },
         seminars: {
           ...(kb?.seminars || {}),
           about: seminarsAbout,
@@ -71,13 +61,12 @@ export function KnowledgeEditor() {
 
   if (!kb) return <div className="py-16 flex justify-center"><Loader2 className="animate-spin text-[#00F0FF]" /></div>;
 
-  const setCourse = (i, k, v) => setCourses((cs) => cs.map((c, idx) => (idx === i ? { ...c, [k]: v } : c)));
   const setFaq = (i, k, v) => setFaqs((fs) => fs.map((f, idx) => (idx === i ? { ...f, [k]: v } : f)));
 
   return (
     <div className="space-y-6" data-testid="knowledge-editor">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Everything here is what SECU is allowed to tell visitors. Only add verified info.</p>
+        <p className="text-sm text-muted-foreground">Everything here is what SECU is allowed to tell visitors. Courses are managed in the Courses tab.</p>
         <Button onClick={save} disabled={saving} data-testid="kb-save-button" className="h-11">
           {saving ? <Loader2 className="animate-spin" /> : <><Save size={18} className="mr-2" /> Save all</>}
         </Button>
@@ -91,28 +80,6 @@ export function KnowledgeEditor() {
           <div><Label>Tagline</Label><Input value={institute.tagline} onChange={(e) => setInstitute({ ...institute, tagline: e.target.value })} /></div>
         </div>
         <div><Label>Description</Label><Textarea value={institute.description} onChange={(e) => setInstitute({ ...institute, description: e.target.value })} /></div>
-      </section>
-
-      {/* Courses */}
-      <section className="glass rounded-xl p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading text-lg font-semibold flex items-center gap-2"><BookOpen size={18} className="text-[#00F0FF]" /> Courses</h3>
-          <Button variant="outline" size="sm" onClick={() => setCourses([...courses, emptyCourse()])} data-testid="kb-add-course-button"><Plus size={16} className="mr-1" /> Add course</Button>
-        </div>
-        {courses.map((c, i) => (
-          <div key={c._uid} className="rounded-lg border border-border p-3 space-y-2" data-testid="kb-course-row">
-            <div className="grid sm:grid-cols-2 gap-2">
-              <Input placeholder="Course name" value={c.name} onChange={(e) => setCourse(i, "name", e.target.value)} data-testid="kb-course-name" />
-              <Input placeholder="Duration (e.g. 45 days)" value={c.duration} onChange={(e) => setCourse(i, "duration", e.target.value)} />
-              <Input placeholder="Fee (e.g. ₹15,000)" value={c.fee} onChange={(e) => setCourse(i, "fee", e.target.value)} />
-              <Input placeholder="Category (e.g. Cyber Security)" value={c.category} onChange={(e) => setCourse(i, "category", e.target.value)} />
-            </div>
-            <Input placeholder="Short summary" value={c.summary} onChange={(e) => setCourse(i, "summary", e.target.value)} />
-            <Input placeholder="Batch dates / timings (e.g. Starts 1 Aug · Mon-Fri 10am-12pm)" value={c.batch} onChange={(e) => setCourse(i, "batch", e.target.value)} data-testid="kb-course-batch" />
-            <Input placeholder="Prerequisites (optional)" value={c.prerequisites} onChange={(e) => setCourse(i, "prerequisites", e.target.value)} />
-            <Button variant="ghost" size="sm" className="text-red-400" onClick={() => setCourses(courses.filter((_, idx) => idx !== i))}><Trash2 size={16} className="mr-1" /> Remove</Button>
-          </div>
-        ))}
       </section>
 
       {/* Seminars */}

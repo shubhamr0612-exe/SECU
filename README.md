@@ -1,58 +1,209 @@
 # SECU — eSecurityIn AI Receptionist & AI Buddy
 
-SECU is an interactive AI character for the reception of **eSecurityIn**, a cybersecurity & IT training institute. Students walk up to a touchscreen and talk naturally (voice or text) with SECU, who answers from an approved knowledge base, discusses seminars/courses, runs a cybersecurity quiz, and captures leads.
+SECU is an AI-powered virtual receptionist and assistant designed for eSecurityIn, a cybersecurity and IT training institute.
 
-## Architecture
-- **Frontend**: React 19 + Vite + Tailwind v4 + shadcn/ui (dark futuristic kiosk UI)
-- **Backend**: FastAPI (Python) with modular services
-- **Database**: MongoDB (sessions, messages, leads, users)
-- **AI**: LLM via a provider-agnostic abstraction (`app/services/llm.py`), default Gemini `gemini-3-flash-preview` through the Emergent universal key
-- **Voice**: Browser Web Speech API (STT) + SpeechSynthesis (TTS) in V1; server-side `stt.py` / `tts.py` abstraction points for future providers
+Visitors can interact with SECU through text and voice, explore courses and seminars, take cybersecurity quizzes, and submit enquiries.
 
-## Voice pipeline
-Mic → Speech-to-Text (browser) → Conversation manager (`/api/chat`) → Knowledge retrieval → LLM → Guardrails → Text-to-Speech (browser) → Speaker.
+## Features
 
-## Project structure
+- AI-powered conversations using Google Gemini
+- AI vision and gesture detection
+- Voice interaction and text-to-speech
+- Knowledge-base-driven responses
+- Course and seminar information
+- Cybersecurity quizzes
+- Visitor lead capture
+- Administrator dashboard and authentication
+- MongoDB-backed data storage
+- Local filesystem storage for uploaded assets
+
+## Technology Stack
+
+| Component | Technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS |
+| Backend | Python, FastAPI |
+| Database | MongoDB Atlas |
+| AI and Vision | Google Gemini API |
+| Text-to-Speech | OpenAI API |
+| Authentication | JWT, bcrypt |
+| Storage | Local filesystem |
+
+## Project Structure
+
+```text
+SECU/
+├── backend/
+│   ├── app/
+│   │   ├── agent/
+│   │   └── services/
+│   ├── knowledge/
+│   ├── tests/
+│   ├── server.py
+│   ├── requirements.txt
+│   └── .env.example
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   ├── package.json
+│   └── .env.example
+│
+├── .gitignore
+└── README.md
 ```
-backend/
-  server.py                 # FastAPI app, routes, auth, startup seeding
-  app/agent/prompts.py      # SECU system prompt
-  app/agent/guardrails.py   # prompt-injection & secret-leak guardrails
-  app/services/llm.py       # LLM abstraction (provider/model from env)
-  app/services/knowledge.py # structured knowledge retrieval
-  app/services/stt.py/tts.py/camera.py  # future provider abstractions (disabled in V1)
-  knowledge/*.json          # institute, courses, seminars, faq, contact, quiz
-frontend/
-  src/pages/                # Reception, Admin, Login
-  src/components/           # Avatar, VoiceVisualizer, LeadForm, QuizModal, CoursesModal
-  src/hooks/useVoice.js     # Web Speech API STT + TTS
-  src/services/api.js       # API client
+
+## Prerequisites
+
+Install the following:
+
+- Python 3.11 or later
+- Node.js and npm
+- MongoDB Atlas account
+- Google Gemini API key
+- OpenAI API key (for server-side text-to-speech)
+
+## Installation and Setup
+
+### 1. Clone the repository
+
+```bash
+git clone YOUR_GITHUB_REPOSITORY_URL
+cd SECU
 ```
 
-## Environment variables
-See `.env.example`. Backend `backend/.env` needs: `MONGO_URL`, `DB_NAME`, `EMERGENT_LLM_KEY` (or your own `LLM_API_KEY`), `LLM_PROVIDER`, `LLM_MODEL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+### 2. Configure the backend
 
-## Running (this environment)
-Backend and frontend are managed by supervisor. After `.env` or dependency changes:
+Create and activate a Python virtual environment.
+
+**Windows PowerShell:**
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
-sudo supervisorctl restart backend
-sudo supervisorctl restart frontend
+
+Install dependencies:
+
+```powershell
+pip install -r requirements.txt
 ```
 
-## API endpoints
-`GET /api/health`, `POST /api/chat`, `POST /api/voice/transcribe`, `POST /api/voice/speak`,
-`POST /api/leads`, `GET /api/leads` (admin), `GET /api/analytics` (admin),
-`GET /api/quiz`, `POST /api/quiz/answer`, `POST /api/auth/login`, `GET /api/auth/me`.
+Create your backend environment file:
 
-## Admin login
-Default seeded admin (see `/app/memory/test_credentials.md`):
-`admin@esecurityin.com` / `SecuAdmin@2026`
+```powershell
+Copy-Item .env.example .env
+```
 
-## Editing the knowledge base
-Edit JSON files in `backend/knowledge/`. Only add **verified** info. Files contain `_TODO` markers where the institute's real data should be filled in. Add quiz questions to `knowledge/quiz.json`.
+Open `backend/.env` and configure:
 
-## Security notes
-JWT admin auth, bcrypt password hashing, ODM-parameterised queries, input validation, output guardrails (no system-prompt/secret leakage), CORS via env, no API keys in frontend, user-friendly errors (no stack traces).
+| Variable | Description |
+|---|---|
+| MONGO_URL | MongoDB connection URI |
+| DB_NAME | Your MongoDB database name |
+| JWT_SECRET | Random secret of at least 32 characters |
+| ADMIN_EMAIL | Administrator email |
+| ADMIN_PASSWORD | Administrator password |
+| GEMINI_API_KEY | Google Gemini API key |
+| LLM_PROVIDER | AI provider (`gemini`) |
+| LLM_MODEL | Gemini model name |
+| OPENAI_API_KEY | OpenAI API key for TTS |
+| CORS_ORIGINS | Allowed frontend origins |
+| PUBLIC_BASE_URL | Backend base URL |
 
-## Privacy / future camera architecture
-V1 does **not** use facial recognition, person identification, emotion/age/gender inference, or automatic photography. `app/services/camera.py` (`CameraService`) is an isolated, disabled interface for a future opt-in "Take a selfie" feature.
+For local development, the application URLs are:
+
+```dotenv
+CORS_ORIGINS=http://localhost:3000
+PUBLIC_BASE_URL=http://127.0.0.1:8000
+```
+
+Use your own MongoDB Atlas connection URI, database name, API keys and administrator credentials.
+
+### 3. Configure the frontend
+
+Open a second terminal from the project root:
+
+```powershell
+cd frontend
+npm install
+```
+
+Create the frontend environment file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Configure:
+
+```dotenv
+VITE_BACKEND_URL=http://127.0.0.1:8000
+```
+
+### 4. Start the backend
+
+From the backend directory, with the virtual environment activated:
+
+```powershell
+uvicorn server:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Backend API:
+
+```text
+http://127.0.0.1:8000
+```
+
+Health check:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+### 5. Start the frontend
+
+From the frontend directory:
+
+```powershell
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## API Configuration
+
+SECU uses separate API credentials:
+
+- Google Gemini for AI conversations and vision.
+- OpenAI for server-side text-to-speech.
+
+API access and billing are managed independently by their respective providers. A ChatGPT subscription does not include OpenAI API credits.
+
+## Testing
+
+From the backend directory:
+
+```powershell
+pytest -q -m "not integration"
+```
+
+Integration tests requiring paid external API services can be run separately when those services are configured and available.
+
+## Security
+
+- Never commit `.env` files or API credentials.
+- Use your own MongoDB database and API keys.
+- Configure a unique, secure JWT secret.
+- Set your own administrator email and password.
+- Do not expose backend API keys through frontend `VITE_` variables.
+- Local uploaded data is stored in `backend/local_storage/` and should not be committed.
+
+## License
+
+Add your chosen license before distributing or accepting contributions.

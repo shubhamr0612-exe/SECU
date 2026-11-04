@@ -7,9 +7,10 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
-import { Users, TrendingUp, MessageSquare, Award, LogOut, Download, Shield, Loader2, BarChart3, BookMarked } from "lucide-react";
+import { Users, TrendingUp, MessageSquare, Award, LogOut, Download, Shield, Loader2, BarChart3, BookMarked, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeEditor } from "../components/KnowledgeEditor";
+import { CoursesManager } from "../components/CoursesManager";
 
 const COLORS = ["#00F0FF", "#10B981", "#3B82F6", "#F59E0B", "#A855F7"];
 
@@ -87,11 +88,15 @@ export default function Admin() {
           <Button variant={tab === "overview" ? "default" : "outline"} size="sm" onClick={() => setTab("overview")} data-testid="admin-tab-overview">
             <BarChart3 size={16} className="mr-1" /> Overview
           </Button>
+          <Button variant={tab === "courses" ? "default" : "outline"} size="sm" onClick={() => setTab("courses")} data-testid="admin-tab-courses">
+            <GraduationCap size={16} className="mr-1" /> Courses
+          </Button>
           <Button variant={tab === "knowledge" ? "default" : "outline"} size="sm" onClick={() => setTab("knowledge")} data-testid="admin-tab-knowledge">
             <BookMarked size={16} className="mr-1" /> Knowledge Base
           </Button>
         </div>
 
+        {tab === "courses" && <CoursesManager />}
         {tab === "knowledge" && <KnowledgeEditor />}
 
         {tab === "overview" && (<>

@@ -1,44 +1,68 @@
-"""LLM abstraction layer for SECU.
 
-Provider/model are read from env so they can be swapped without touching callers.
-Uses the emergentintegrations LlmChat with the Emergent universal key.
-"""
+"""Gemini-powered LLM service for SECU."""
+
 import os
 import logging
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger("secu.llm")
 
-_API_KEY = os.environ.get("EMERGENT_LLM_KEY")
-_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini")
+_API_KEY = os.environ.get("GEMINI_API_KEY")
 _MODEL = os.environ.get("LLM_MODEL", "gemini-3-flash-preview")
 
+_client = genai.Client(api_key=_API_KEY) if _API_KEY else None
 
-async def generate_reply(system_prompt: str, history: list, user_text: str,
-                         session_id: str) -> str:
-    """Generate a single assistant reply.
 
-    history: list of {"role": "user"|"assistant", "message": str} (most recent last).
-    Conversation context is reconstructed into the system prompt because a fresh
-    LlmChat instance is created per request (stateless backend, state in Mongo).
-    """
-    if not _API_KEY:
-        raise RuntimeError("LLM_API_KEY_MISSING")
+async def generate_reply(
+    system_prompt: str,
+    history: list,
+    user_text: str,
+    session_id: str,
+) -> str:
+    """Generate an assistant reply using Gemini."""
 
-    convo = ""
+    if not _client:
+        raise RuntimeError("GEMINI_API_KEY_MISSING")
+
+    contents = []
+
+    # Reconstruct recent conversation history.
     for turn in history[-10:]:
-        who = "Student" if turn.get("role") == "user" else "SECU"
-        convo += f"{who}: {turn.get('message')}\n"
+        role = turn.get("role")
+        message = turn.get("message", "")
 
-    full_system = system_prompt
-    if convo:
-        full_system += "\n\nRECENT CONVERSATION (for context):\n" + convo
+        if not message or role not in ("user", "assistant"):
+            continue
 
-    chat = LlmChat(
-        api_key=_API_KEY,
-        session_id=session_id,
-        system_message=full_system,
-    ).with_model(_PROVIDER, _MODEL)
+        contents.append(
+            types.Content(
+                role="user" if role == "user" else "model",
+                parts=[types.Part.from_text(text=message)],
+            )
+        )
 
-    reply = await chat.send_message(UserMessage(text=user_text))
-    return (reply or "").strip()
+    # Add the current user message.
+    contents.append(
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=user_text)],
+        )
+    )
+
+    try:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7,
+            ),
+        )
+
+        return (response.text or "").strip()
+
+    except Exception as exc:
+        logger.exception("Gemini reply generation failed: %s", type(exc).__name__)
+        raise

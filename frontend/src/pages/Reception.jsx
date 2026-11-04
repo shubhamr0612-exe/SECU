@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useVoice } from "../hooks/useVoice";
 import { useMotionDetect } from "../hooks/useMotionDetect";
-import HackerAvatarGif from "../components/HackerAvatarGif";
+import AvatarStage from "../components/AvatarStage";
 import { stateLabel, stateColor } from "../components/Avatar";
 import { VoiceVisualizer } from "../components/VoiceVisualizer";
 import { CameraView } from "../components/CameraView";
@@ -300,9 +300,9 @@ export default function Reception() {
             </p>
           )}
 
-          <HackerAvatarGif state={displayState} />
+          <AvatarStage state={displayState} active={started || ["LISTENING", "THINKING", "SPEAKING"].includes(displayState)} />
 
-          <h1 className="font-heading text-4xl sm:text-5xl font-extrabold -mt-2">SECU</h1>
+          <h1 className="font-heading text-4xl sm:text-5xl font-extrabold">SECU</h1>
           <p className="text-muted-foreground mt-1">eSecurityIn AI Buddy</p>
 
           {!started && (

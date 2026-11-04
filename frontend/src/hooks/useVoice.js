@@ -6,13 +6,14 @@ import { matchWake } from "./wakeWord";
 // The mic auto-pauses while SECU speaks and resumes afterwards.
 
 // Indian voices only: hi-IN for Hindi; en-IN for English (hi-IN as a fallback accent).
-const NAME_PREF = /neerja|swara|heera|kalpana|ravi|prabhat|madhur|hemant|google|lekha|veena|rishi/i;
+const NAME_PREF = /neerja|swara|heera|kalpana|lekha|veena|aditi|google|female/i;
+const MALE = /\b(ravi|prabhat|madhur|hemant|rishi|male)\b/i;
 export const pickIndianVoice = (voices, lang) => {
   const byLang = (l) => voices.filter((v) => (v.lang || "").replace("_", "-").toLowerCase() === l);
   const order = lang === "hi-IN" ? ["hi-in", "en-in"] : ["en-in", "hi-in"];
   for (const l of order) {
     const list = byLang(l);
-    if (list.length) return list.find((v) => NAME_PREF.test(v.name)) || list[0];
+    if (list.length) return list.find((v) => NAME_PREF.test(v.name) && !MALE.test(v.name)) || list.find((v) => !MALE.test(v.name)) || list[0];
   }
   return voices.find((v) => /india|hindi/i.test(v.name)) || null;
 };

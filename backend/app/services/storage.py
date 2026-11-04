@@ -1,57 +1,76 @@
-"""Emergent Object Storage service — used to host branded selfies so a QR code can
-link to them. Frames/selfies are only uploaded when the visitor explicitly saves one.
-"""
-import os
+
+"""Local filesystem storage service for SECU selfies."""
+
 import logging
-import requests
+import mimetypes
+from pathlib import Path, PurePosixPath
 
 logger = logging.getLogger("secu.storage")
 
-STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
-STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
-APP_NAME = "secu-ai"
+# backend/local_storage/
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+STORAGE_DIR = BACKEND_DIR / "local_storage"
 
-_storage_key = None
+APP_NAME = "secu-ai"
 
 
 def init_storage(force: bool = False):
-    global _storage_key
-    if _storage_key and not force:
-        return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
+    """Initialize the local storage directory."""
+    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Local storage initialized at %s", STORAGE_DIR)
+    return str(STORAGE_DIR)
+
+
+def _resolve_path(path: str) -> Path:
+    """Resolve a storage path safely inside STORAGE_DIR."""
+    if not path or not isinstance(path, str):
+        raise ValueError("Invalid storage path")
+
+    normalized = path.replace("\\", "/")
+    relative = PurePosixPath(normalized)
+
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("Invalid storage path")
+
+    target = (STORAGE_DIR / Path(*relative.parts)).resolve()
+
+    try:
+        target.relative_to(STORAGE_DIR.resolve())
+    except ValueError:
+        raise ValueError("Storage path is outside the storage directory")
+
+    return target
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
+    """Save an object locally and return its storage path."""
     try:
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=120)
-        if resp.status_code == 404:
-            key = init_storage(force=True)
-            resp = requests.put(
-                f"{STORAGE_URL}/objects/{path}",
-                headers={"X-Storage-Key": key, "Content-Type": content_type},
-                data=data, timeout=120)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        logger.error("Storage put failed: %s", type(e).__name__)
+        target = _resolve_path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+        return {
+            "path": path.replace("\\", "/"),
+            "content_type": content_type or "application/octet-stream",
+        }
+    except Exception as exc:
+        logger.error("Local storage write failed: %s", type(exc).__name__)
         raise
 
 
 def get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}",
-                        headers={"X-Storage-Key": key}, timeout=60)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.get(f"{STORAGE_URL}/objects/{path}",
-                            headers={"X-Storage-Key": key}, timeout=60)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    """Retrieve an object as (bytes, content_type)."""
+    try:
+        target = _resolve_path(path)
+
+        if not target.is_file():
+            raise FileNotFoundError(f"Stored file not found: {path}")
+
+        content = target.read_bytes()
+        content_type = mimetypes.guess_type(target.name)[0]
+
+        return content, content_type or "application/octet-stream"
+
+    except Exception as exc:
+        logger.error("Local storage read failed: %s", type(exc).__name__)
+        raise

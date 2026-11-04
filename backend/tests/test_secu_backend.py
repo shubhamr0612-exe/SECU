@@ -5,12 +5,16 @@ import pathlib
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://cyber-reception-desk.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("TEST_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 API = f"{BASE_URL}/api"
 FIX_DIR = pathlib.Path(__file__).parent / "fixtures"
 
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@esecurityin.com")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "SecuAdmin@2026")
+from dotenv import load_dotenv
+
+load_dotenv(pathlib.Path(__file__).resolve().parents[1] / ".env")
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 
 FORBIDDEN_WORDS = [
     "age", "young", "old", "boy", "girl", "man", "woman", "male", "female",
@@ -29,7 +33,14 @@ def session():
 
 @pytest.fixture(scope="session")
 def admin_token(session):
-    r = session.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=20)
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        pytest.skip("ADMIN_EMAIL and ADMIN_PASSWORD must be configured")
+
+    r = session.post(
+        f"{API}/auth/login",
+        json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+        timeout=20
+    )
     assert r.status_code == 200, r.text
     return r.json()["token"]
 
@@ -104,8 +115,9 @@ def test_chat_prompt_injection_blocked(session):
     assert r.status_code == 200
     reply = r.json()["reply"].lower()
     assert "system prompt" not in reply
-    assert "api key" not in reply
-    assert "emergent_llm_key" not in reply
+    assert "gemini_api_key" not in reply
+    assert "openai_api_key" not in reply
+    assert "jwt_secret" not in reply
 
 
 def test_chat_empty_message_400(session):
@@ -243,7 +255,7 @@ def test_voices_list(session):
     assert len(data["voices"]) == 9
     assert "nova" in [v.get("id") if isinstance(v, dict) else v for v in data["voices"]]
 
-
+@pytest.mark.integration
 def test_voice_synthesize_mp3(session):
     r = session.post(f"{API}/voice/synthesize",
                      json={"text": "Hello from SECU test.", "voice": "nova"}, timeout=60)

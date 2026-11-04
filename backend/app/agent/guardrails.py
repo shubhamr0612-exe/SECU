@@ -14,7 +14,15 @@ INJECTION_PATTERNS = [
 ]
 
 # Leaked-secret markers that must never appear in an outgoing message.
-LEAK_MARKERS = ["sk-emergent", "JWT_SECRET", "MONGO_URL", "password_hash"]
+LEAK_MARKERS = [
+    "sk-",
+    "AIza",
+    "JWT_SECRET",
+    "MONGO_URL",
+    "password_hash",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+]
 
 
 def detect_prompt_injection(text: str) -> bool:

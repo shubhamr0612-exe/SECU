@@ -7,7 +7,7 @@ Build SECU, an interactive AI character for the reception of eSecurityIn (a cybe
 - Frontend: React 19 + Vite + Tailwind v4 + shadcn/ui (dark futuristic kiosk UI). 3D hacker avatar via @react-three/fiber + three.
 - Backend: FastAPI, modular (`app/agent`, `app/services`, `knowledge/`).
 - DB: MongoDB (sessions, messages, leads, users).
-- AI: provider-agnostic `llm.py` + `vision.py` → Gemini `gemini-3-flash-preview` via Emergent universal key.
+- AI: provider-agnostic `llm.py` + `vision.py` → Gemini `gemini-3-flash-preview` via AI: Google Gemini API through the GEMINI_API_KEY environment variable.
 - Voice: browser Web Speech API (STT) + SpeechSynthesis (TTS), hands-free continuous mode.
 - Auth: JWT admin, bcrypt hashing, seeded admin.
 
@@ -33,8 +33,8 @@ AI voice conversation, Hinglish, knowledge base (institute/courses/seminars/faq/
 
 ### V3 (2026-10-03)
 - Admin **Knowledge Base editor** (`/admin` → Knowledge Base tab): edit institute, courses (name/duration/fee/category/summary/prereq), seminars, contact, FAQ. KB now lives in Mongo (`knowledge` doc, seeded from JSON), cached in `KB_CACHE`; SECU answers from it live. Endpoints: GET/PUT `/api/knowledge` (admin), GET `/api/knowledge/public`.
-- **Selfie QR sharing**: branded selfie uploaded to Emergent Object Storage; QR (`qrcode.react`) links to public `/api/selfie/{id}`. Endpoints: POST `/api/selfie/upload`, GET `/api/selfie/{id}`.
-- **Server-side TTS voice picker**: OpenAI TTS via Emergent key (`tts-1`, 9 voices, default nova), browser TTS fallback. Endpoints: GET `/api/voice/voices`, POST `/api/voice/synthesize`.
+- **Selfie QR sharing**: branded selfie stored using local filesystem storage; QR (`qrcode.react`) links to public `/api/selfie/{id}`. Endpoints: POST `/api/selfie/upload`, GET `/api/selfie/{id}`.
+- **Server-side TTS voice picker**: OpenAI TTS API (`tts-1`, 9 voices, default nova), browser TTS fallback. Endpoints: GET `/api/voice/voices`, POST `/api/voice/synthesize`.
 - **Gesture recognition** via Gemini vision (wave/thumbs_up/peace/heart) — SECU reacts while camera on. Endpoint: POST `/api/vision/gesture`. Tested 100% (25/25 backend).
 
 ### V4 (2026-10-03)
@@ -52,7 +52,7 @@ JWT + bcrypt, token-gated admin APIs, output sanitisation, CORS via env, no keys
 - P2: Conversation duration + hourly footfall analytics; lead source/session linkage views.
 
 ## Admin
-admin@esecurityin.com / SecuAdmin@2026 (see /app/memory/test_credentials.md).
+Administrator credentials are configured locally through ADMIN_EMAIL and ADMIN_PASSWORD in backend/.env. No default credentials are provided.
 
 ## v3 (June 2026)
 - "Hey SECU" wake word: kiosk listens from idle (browser speech recognition); detects English/Hindi spellings (hey secu/seku/sekyu, हे सेकू). Pause → back to wake mode; 90s silence → auto reset to wake mode.

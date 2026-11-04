@@ -21,3 +21,30 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Local Emergent metadata and session data
+.emergent/
+
+# Python test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Local databases and SQLite files
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*.swo
+Thumbs.db
+
+# Local Emergent metadata and session data
+.emergent/
+
+# Ignore all local Emergent metadata
+**/.emergent/

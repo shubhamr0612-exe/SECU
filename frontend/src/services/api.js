@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = (
+  import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 export const API = `${BACKEND_URL}/api`;
 
 const client = axios.create({ baseURL: API });
@@ -26,6 +28,10 @@ export const api = {
   gesture: (image_base64) => client.post("/vision/gesture", { image_base64 }),
   getKnowledge: () => client.get("/knowledge"),
   saveKnowledge: (payload) => client.put("/knowledge", payload),
+  listCourses: () => client.get("/admin/courses"),
+  addCourse: (c) => client.post("/admin/courses", c),
+  editCourse: (id, c) => client.put(`/admin/courses/${id}`, c),
+  deleteCourse: (id) => client.delete(`/admin/courses/${id}`),
   getPublicKnowledge: () => client.get("/knowledge/public"),
   getVoices: () => client.get("/voice/voices"),
   synthesize: (text, voice, speed) =>

@@ -39,14 +39,42 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("secu")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+# MongoDB configuration
+mongo_url = os.getenv("MONGO_URL", "").strip()
+db_name = os.getenv("DB_NAME", "").strip()
 
-JWT_SECRET = os.environ["JWT_SECRET"]
+if not mongo_url:
+    raise RuntimeError(
+        "MONGO_URL is missing. Add your MongoDB connection URI to backend/.env"
+    )
+
+if not db_name:
+    raise RuntimeError(
+        "DB_NAME is missing. Add your database name to backend/.env"
+    )
+
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=10000,
+)
+
+db = client[db_name]
+
+JWT_SECRET = os.getenv("JWT_SECRET", "").strip()
 JWT_ALGO = "HS256"
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@esecurityin.com")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "SecuAdmin@2026")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+if len(JWT_SECRET) < 32:
+    raise RuntimeError(
+        "JWT_SECRET must be configured with at least 32 characters in backend/.env"
+    )
+
+if not ADMIN_EMAIL:
+    raise RuntimeError("ADMIN_EMAIL is missing from backend/.env")
+
+if not ADMIN_PASSWORD:
+    raise RuntimeError("ADMIN_PASSWORD is missing from backend/.env")
 
 STATES = ["IDLE", "WELCOME", "VISITOR_DISCOVERY", "CASUAL_CONVERSATION",
           "SEMINAR_DISCUSSION", "COURSE_DISCUSSION", "QUIZ", "LEAD_CAPTURE", "GOODBYE"]
@@ -180,8 +208,15 @@ async def health():
         await db.command("ping")
     except Exception:
         db_ok = False
-    return {"status": "ok", "service": "SECU", "db": db_ok,
-            "llm_configured": bool(os.environ.get("EMERGENT_LLM_KEY")), "time": now_iso()}
+
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "service": "SECU",
+        "db": db_ok,
+        "llm_configured": bool(os.environ.get("GEMINI_API_KEY")),
+        "tts_configured": bool(os.environ.get("OPENAI_API_KEY")),
+        "time": now_iso()
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +474,62 @@ async def update_knowledge(body: KnowledgeUpdate, admin: dict = Depends(get_curr
     return {"ok": True, "knowledge": KB_CACHE}
 
 
+class CourseIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    duration: str = ""
+    fee: str = ""
+    category: str = ""
+    batch: str = ""
+    summary: str = ""
+    prerequisites: str = ""
+
+
+async def _save_courses(courses: list):
+    await db.knowledge.update_one({"_id": "kb"}, {"$set": {"courses.courses": courses, "updated_at": now_iso()}}, upsert=True)
+    await load_kb()
+
+
+async def _courses_with_ids() -> list:
+    courses = list((KB_CACHE.get("courses") or {}).get("courses") or [])
+    if any(not c.get("id") for c in courses):
+        courses = [{**c, "id": c.get("id") or uuid.uuid4().hex[:12]} for c in courses]
+        await _save_courses(courses)
+    return courses
+
+
+@api.get("/admin/courses")
+async def list_courses(admin: dict = Depends(get_current_admin)):
+    return {"courses": await _courses_with_ids()}
+
+
+@api.post("/admin/courses")
+async def add_course(body: CourseIn, admin: dict = Depends(get_current_admin)):
+    courses = await _courses_with_ids()
+    course = {"id": uuid.uuid4().hex[:12], **body.model_dump()}
+    await _save_courses(courses + [course])
+    return {"ok": True, "course": course}
+
+
+@api.put("/admin/courses/{course_id}")
+async def edit_course(course_id: str, body: CourseIn, admin: dict = Depends(get_current_admin)):
+    courses = await _courses_with_ids()
+    if not any(c["id"] == course_id for c in courses):
+        raise HTTPException(status_code=404, detail="Course not found")
+    course = {"id": course_id, **body.model_dump()}
+    await _save_courses([course if c["id"] == course_id else c for c in courses])
+    return {"ok": True, "course": course}
+
+
+@api.delete("/admin/courses/{course_id}")
+async def delete_course(course_id: str, admin: dict = Depends(get_current_admin)):
+    courses = await _courses_with_ids()
+    remaining = [c for c in courses if c["id"] != course_id]
+    if len(remaining) == len(courses):
+        raise HTTPException(status_code=404, detail="Course not found")
+    await _save_courses(remaining)
+    return {"ok": True}
+
+
 @api.get("/knowledge/public")
 async def public_knowledge():
     """Public subset used by the reception UI (courses + contact)."""
@@ -563,27 +654,46 @@ app.add_middleware(
 )
 
 
+
 @app.on_event("startup")
 async def startup():
+    # Verify MongoDB connection
+    await client.admin.command("ping")
+    logger.info("Connected to MongoDB database: %s", db.name)
+
     await db.users.create_index("email", unique=True)
     await db.leads.create_index("created_at")
     await db.messages.create_index("session_id")
+
     await load_kb()
+
+    # Initialize local filesystem storage
     try:
         storage.init_storage()
-        logger.info("Object storage initialized.")
+        logger.info("Local storage initialized.")
     except Exception as e:
-        logger.error("Storage init failed: %s", type(e).__name__)
+        logger.error("Storage initialization failed: %s", type(e).__name__)
+
+    # Seed admin account if it doesn't exist
     existing = await db.users.find_one({"email": ADMIN_EMAIL.lower()})
+
     if not existing:
         await db.users.insert_one({
-            "email": ADMIN_EMAIL.lower(), "password_hash": hash_password(ADMIN_PASSWORD),
-            "name": "SECU Admin", "role": "admin", "created_at": now_iso()})
+            "email": ADMIN_EMAIL.lower(),
+            "password_hash": hash_password(ADMIN_PASSWORD),
+            "name": "SECU Admin",
+            "role": "admin",
+            "created_at": now_iso()
+        })
         logger.info("Seeded admin user.")
+
     elif not verify_password(ADMIN_PASSWORD, existing["password_hash"]):
-        await db.users.update_one({"email": ADMIN_EMAIL.lower()},
-                                  {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}})
+        await db.users.update_one(
+            {"email": ADMIN_EMAIL.lower()},
+            {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}}
+        )
         logger.info("Updated admin password.")
+
 
 
 @app.on_event("shutdown")
